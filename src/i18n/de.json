@@ -1,14 +1,14 @@
 {
   "settings": {
     "notice": "Dieses Plugin ist eine Konfigurationszentrale für KI-Anbieter. Es macht selbst nichts, aber <a href=\"https://github.com/pfrankov/obsidian-ai-providers\">andere Plugins</a> können es nutzen, um KI-Einstellungen nicht mehrfach konfigurieren zu müssen.",
-    "configuredProviders": "KI-Anbieter",
-    "addNewProvider": "Neuen Anbieter hinzufügen",
+    "configuredProviders": "KI-anbieter",
+    "addNewProvider": "Neuen anbieter hinzufügen",
     "addProvider": "Anbieter hinzufügen",
     "providerName": "Anbietername",
     "providerNameDesc": "Geben Sie einen Namen für diesen Anbieter ein",
-    "providerNamePlaceholder": "Mein Anbieter",
+    "providerNamePlaceholder": "Mein anbieter",
     "providerType": "Anbietertyp",
-    "providerTypeDesc": "Wählen Sie den KI-Anbietertyp aus",
+    "providerTypeDesc": "Wählen Sie den KI-anbietertyp aus",
     "providerUrl": "Anbieter-URL",
     "providerUrlDesc": "Geben Sie die API-Endpunkt-URL ein",
     "providerUrlPlaceholder": "https://...",
@@ -30,11 +30,11 @@
     "loadingModels": "Modelle werden geladen...",
     "noModelsAvailable": "Keine Modelle verfügbar",
     "editProvider": "Anbieter bearbeiten",
-    "developerSettings": "Entwicklereinstellungen",
+    "developerSettings": "Für entwickler",
     "developerSettingsDesc": "Zusätzliche Einstellungen für Entwicklung und Debugging aktivieren",
-    "debugLogging": "Debug-Protokollierung",
+    "debugLogging": "Debug-protokollierung",
     "debugLoggingDesc": "Detaillierte Protokollierung in der Konsole aktivieren",
-    "useNativeFetch": "Nativen Fetch verwenden",
+    "useNativeFetch": "Nativen fetch verwenden",
     "useNativeFetchDesc": "Verwendet Fetch API anstelle von Obsidian für besseres Debugging der Anfragen in DevTools"
   },
   "modals": {

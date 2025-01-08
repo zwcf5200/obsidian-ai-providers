@@ -30,7 +30,7 @@
     "loadingModels": "正在加载模型...",
     "noModelsAvailable": "没有可用的模型",
     "editProvider": "编辑提供商",
-    "developerSettings": "开发者设置",
+    "developerSettings": "开发者选项",
     "developerSettingsDesc": "启用额外的开发和调试设置",
     "debugLogging": "调试日志",
     "debugLoggingDesc": "在控制台启用详细日志记录",
