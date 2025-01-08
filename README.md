@@ -20,6 +20,10 @@ Think of it like a control panel where you can:
 - Easily extend support for additional AI providers in your plugin
 - Available in 4 languages: English, Chinese, German, and Russian (more languages coming soon)
 
+## Installation
+### BRAT
+You can install this plugin via [BRAT](https://obsidian.md/plugins?id=obsidian42-brat): `pfrankov/obsidian-ai-providers`
+
 ## Required by plugins
 - [Local GPT](https://github.com/pfrankov/obsidian-local-gpt) (soon)
 
