@@ -1,5 +1,5 @@
 import { Plugin } from 'obsidian';
-import { IAIProvidersPluginSettings } from './types';
+import { IAIProvidersPluginSettings } from '@obsidian-ai-providers/sdk';
 import { DEFAULT_SETTINGS, AIProvidersSettingTab } from './settings';
 import { AIProvidersService } from './AIProvidersService';
 import { logger } from './utils/logger';

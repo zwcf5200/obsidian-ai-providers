@@ -1,5 +1,5 @@
 import { OpenAIHandler } from './OpenAIHandler';
-import { IAIProvider } from '../types';
+import { IAIProvider } from '@obsidian-ai-providers/sdk';
 import { createAIHandlerTests, IMockClient, IVerifyApiCallsParams } from '../../test-utils/createAIHandlerTests';
 
 jest.mock('openai');
@@ -38,7 +38,6 @@ const createMockClient = (): IMockClient => ({
                                 break;
                             }
                             yield { choices: [{ delta: { content: `chunk${i}` } }] };
-                            await new Promise(resolve => setTimeout(resolve, 100));
                         }
                     }
                 };

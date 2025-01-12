@@ -1,4 +1,4 @@
-import { IAIHandler, IAIProvider } from '../src/types';
+import { IAIHandler, IAIProvider } from '@obsidian-ai-providers/sdk';
 
 export type IMockResponse = {
     choices: Array<{
@@ -34,6 +34,8 @@ export interface IVerifyApiCallsParams {
     mockClient: IMockClient;
     executeParams: IExecuteParams;
 }
+
+const flushPromises = () => new Promise(process.nextTick);
 
 export const createAIHandlerTests = (
     handlerName: string,
@@ -107,7 +109,7 @@ export const createAIHandlerTests = (
                     result.onData(onDataMock);
                     result.onEnd(onEndMock);
 
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    await flushPromises();
 
                     const expectedContent = 'response' in mockResponse 
                         ? mockResponse.response 
@@ -128,7 +130,7 @@ export const createAIHandlerTests = (
 
                     const mockStream = {
                         [Symbol.asyncIterator]: async function* () {
-                            await new Promise(resolve => setTimeout(resolve, 10));
+                            await flushPromises();
                             errorThrown = true;
                             yield options?.mockStreamResponse || { choices: [{ delta: { content: '' } }] };
                             throw mockError;
@@ -152,10 +154,10 @@ export const createAIHandlerTests = (
                     result.onError(onErrorMock);
 
                     while (!errorThrown) {
-                        await new Promise(resolve => setTimeout(resolve, 10));
+                        await flushPromises();
                     }
 
-                    await new Promise(resolve => setTimeout(resolve, 50));
+                    await flushPromises();
 
                     expect(onErrorMock).toHaveBeenCalledWith(mockError);
                 });
@@ -163,6 +165,23 @@ export const createAIHandlerTests = (
 
             describe('Cancellation', () => {
                 it('should support request abortion and cleanup', async () => {
+                    let chunkCount = 0;
+                    const mockStream = {
+                        [Symbol.asyncIterator]: async function* () {
+                            while (chunkCount < 5) {
+                                yield options?.mockStreamResponse || { choices: [{ delta: { content: `chunk${chunkCount}` } }] };
+                                chunkCount++;
+                                await flushPromises();
+                            }
+                        }
+                    };
+
+                    if (mockClient.chat?.completions.create) {
+                        mockClient.chat.completions.create.mockResolvedValue(mockStream);
+                    } else if (mockClient.generate) {
+                        mockClient.generate.mockResolvedValue(mockStream);
+                    }
+
                     const chunkHandler = await handler.execute({
                         provider: mockProvider,
                         prompt: 'test prompt'
@@ -171,12 +190,15 @@ export const createAIHandlerTests = (
                     const chunks: string[] = [];
                     chunkHandler.onData((chunk) => {
                         chunks.push(chunk);
+                        if (chunks.length === 2) {
+                            chunkHandler.abort();
+                        }
                     });
 
-                    await new Promise(resolve => setTimeout(resolve, 150));
-                    chunkHandler.abort();
-
-                    await new Promise(resolve => setTimeout(resolve, 300));
+                    // Wait for all promises to resolve
+                    await flushPromises();
+                    await flushPromises();
+                    await flushPromises();
 
                     expect(chunks.length).toBeGreaterThan(0);
                     expect(chunks.length).toBeLessThan(5);

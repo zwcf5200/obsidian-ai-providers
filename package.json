@@ -3,15 +3,31 @@
 	"version": "1.0.0",
 	"description": "A hub for setting AI providers (OpenAI-like, Ollama and more) in one place.",
 	"main": "dist/main.js",
+	"workspaces": [
+		"packages/*"
+	],
 	"scripts": {
 		"dev": "node copy-files.mjs && node esbuild.config.mjs",
 		"dev-test": "concurrently \"node copy-files.mjs && node esbuild.config.mjs\" \"npm run test:watch\"",
 		"build": "tsc -noEmit -skipLibCheck && node copy-files.mjs && node esbuild.config.mjs production",
+		"build:example": "cd packages/example-plugin && tsc -noEmit -skipLibCheck --project tsconfig.json && node copy-files.mjs && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"test": "jest",
-		"test:watch": "jest --watch"
+		"test:watch": "jest --watch",
+		"build:sdk": "cd packages/sdk && npm run build",
+		"publish:sdk": "cd packages/sdk && npm run build && npm publish"
 	},
-	"keywords": [],
+	"keywords": [
+		"obsidian",
+		"ollama",
+		"ai",
+		"plugin",
+		"llm",
+		"gpt",
+		"openai",
+		"providers",
+		"sdk"
+	],
 	"author": "Pavel Frankov",
 	"license": "MIT",
 	"dependencies": {
@@ -33,6 +49,7 @@
 		"ts-jest": "^29.1.2",
 		"tslib": "2.4.0",
 		"typescript": "4.7.4",
-		"electron": "^33.2.1"
+		"electron": "^33.2.1",
+		"@obsidian-ai-providers/sdk": "file:packages/sdk"
 	}
 }

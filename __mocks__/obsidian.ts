@@ -8,10 +8,15 @@ export class Notice {
 export class Plugin {
     app: App;
     manifest: any;
+    settingTabs: PluginSettingTab[] = [];
 
     constructor(app: App, manifest: any) {
         this.app = app;
         this.manifest = manifest;
+    }
+
+    addSettingTab(tab: PluginSettingTab): void {
+        this.settingTabs.push(tab);
     }
 
     loadData(): Promise<any> {
@@ -32,6 +37,27 @@ export class PluginSettingTab {
         this.app = app;
         this.plugin = plugin;
         this.containerEl = document.createElement('div');
+        this.containerEl.empty = function() {
+            while (this.firstChild) {
+                this.removeChild(this.firstChild);
+            }
+        };
+        this.containerEl.createEl = function(tag: string, attrs?: { text?: string }): HTMLElement {
+            const el = document.createElement(tag);
+            if (attrs?.text) {
+                el.textContent = attrs.text;
+            }
+            this.appendChild(el);
+            return el;
+        };
+        this.containerEl.createDiv = function(className?: string): HTMLElement {
+            const div = document.createElement('div');
+            if (className) {
+                div.className = className;
+            }
+            this.appendChild(div);
+            return div;
+        };
     }
 
     display(): void {
@@ -301,7 +327,7 @@ declare global {
     interface HTMLElement {
         createDiv(className?: string): HTMLElement;
         empty(): void;
-        createEl(tag: string, attrs?: { text?: string }): HTMLElement;
+        createEl(tag: string, attrs?: { text?: string }, cls?: string): HTMLElement;
     }
 }
 

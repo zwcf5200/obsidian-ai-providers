@@ -30,11 +30,12 @@ You can install this plugin via [BRAT](https://obsidian.md/plugins?id=obsidian42
 - [Local GPT](https://github.com/pfrankov/obsidian-local-gpt) (soon)
 
 ## For plugin developers
-If you're interested in integrating AI Providers in your plugin, please contact me via Telegram [@pavel_frankov](https://t.me/pavel_frankov).
+[How to integrate AI Providers in your plugin](./packages/sdk/README.md)
+If you have any questions, please contact me via Telegram [@pavel_frankov](https://t.me/pavel_frankov).
 
 ## Roadmap
-- [ ] Docs for devs
-- [ ] Ollama context optimizations
+- [x] Docs for devs
+- [x] Ollama context optimizations
 - [ ] Gemini Provider support
 - [ ] Anthropic Provider support
 - [ ] Groq Provider support

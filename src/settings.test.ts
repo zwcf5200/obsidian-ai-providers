@@ -2,7 +2,7 @@ import { App } from 'obsidian';
 import { AIProvidersSettingTab, DEFAULT_SETTINGS } from './settings';
 import AIProvidersPlugin from './main';
 import { ConfirmationModal } from './modals/ConfirmationModal';
-import { IAIProvider, IChunkHandler } from './types';
+import { IAIProvider, IChunkHandler } from '@obsidian-ai-providers/sdk';
 import { OpenAIHandler } from './handlers/OpenAIHandler';
 import { OllamaHandler } from './handlers/OllamaHandler';
 import { AIProvidersService } from './AIProvidersService';
@@ -139,6 +139,8 @@ const createTestSetup = () => {
 
     return { app, plugin, settingTab, containerEl };
 };
+
+const flushPromises = () => new Promise(process.nextTick);
 
 describe('AIProvidersSettingTab', () => {
     let app: App;
@@ -398,7 +400,7 @@ describe('AIProvidersSettingTab', () => {
             button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
             // Wait for models to load
-            await new Promise(resolve => setTimeout(resolve, 0));
+            await flushPromises();
 
             // Update editingProvider with models
             editingProvider.availableModels = models;
@@ -409,7 +411,7 @@ describe('AIProvidersSettingTab', () => {
             settingTab.display();
 
             // Wait for DOM updates
-            await new Promise(resolve => setTimeout(resolve, 0));
+            await flushPromises();
 
             // Re-query the elements after re-render
             const updatedDropdown = containerEl.querySelector('[data-testid="model-dropdown"]');
@@ -446,7 +448,7 @@ describe('AIProvidersSettingTab', () => {
             button.click();
 
             // Wait for error to be handled
-            await new Promise(resolve => setTimeout(resolve, 0));
+            await flushPromises();
 
             // Re-render after error
             settingTab.display();
@@ -486,7 +488,7 @@ describe('AIProvidersSettingTab', () => {
             button.click();
 
             // Wait for models to load
-            await new Promise(resolve => setTimeout(resolve, 0));
+            await flushPromises();
 
             // Verify empty state handling
             expect(select.disabled).toBe(true);
@@ -518,7 +520,7 @@ describe('AIProvidersSettingTab', () => {
             button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
             // Wait for models to load
-            await new Promise(resolve => setTimeout(resolve, 0));
+            await flushPromises();
 
             // Update editingProvider with models
             editingProvider.availableModels = models;
@@ -529,7 +531,7 @@ describe('AIProvidersSettingTab', () => {
             settingTab.display();
 
             // Wait for DOM updates
-            await new Promise(resolve => setTimeout(resolve, 0));
+            await flushPromises();
 
             // Re-query the elements after re-render
             const updatedDropdown = containerEl.querySelector('[data-testid="model-dropdown"]');

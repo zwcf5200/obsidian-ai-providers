@@ -2,7 +2,7 @@ import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import AIProvidersPlugin from './main';
 import { I18n } from './i18n';
 import { ConfirmationModal } from './modals/ConfirmationModal';
-import { IAIProvider, IAIProvidersPluginSettings } from './types';
+import { IAIProvider, IAIProvidersPluginSettings } from '@obsidian-ai-providers/sdk';
 import { openAIIcon, ollamaIcon } from './utils/icons';
 import { logger } from './utils/logger';
 

@@ -39,6 +39,9 @@ jest.mock('obsidian', () => ({
     }
 }));
 
+// Add after imports
+const flushPromises = () => new Promise(process.nextTick);
+
 // Simple mock for TransformStream
 class MockTransformStream {
     readable: ReadableStream;
@@ -48,12 +51,11 @@ class MockTransformStream {
     constructor() {
         this.writable = {
             getWriter: () => ({
-                write: (chunk: Uint8Array) => {
+                write: async (chunk: Uint8Array) => {
                     this.chunks.push(chunk);
-                    return Promise.resolve();
                 },
-                close: () => Promise.resolve(),
-                abort: () => Promise.resolve(),
+                close: async () => {},
+                abort: async () => {},
                 releaseLock: () => {}
             })
         } as WritableStream;
@@ -278,7 +280,7 @@ describe('electronFetch', () => {
             });
             
             // Ensure the request is created before aborting
-            await Promise.resolve();
+            await flushPromises();
             controller.abort();
             if (errorCallback) {
                 errorCallback(new Error('Aborted'));

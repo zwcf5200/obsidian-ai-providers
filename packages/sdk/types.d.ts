@@ -1,3 +1,9 @@
+import { App, Plugin, EventRef } from "obsidian";
+
+export type ObsidianEvents = {
+    'ai-providers-ready': () => void;
+};
+
 export interface IAIProvider {
     id: string;
     name: string;
@@ -56,4 +62,28 @@ export interface IAIProvidersPluginSettings {
     _version: number;
     debugLogging?: boolean;
     useNativeFetch?: boolean;
-} 
+}
+
+export interface ExtendedApp extends App { 
+    aiProviders?: IAIProvidersService;
+    plugins?: {
+        enablePlugin: (id: string) => Promise<void>;
+        disablePlugin: (id: string) => Promise<void>;
+    };
+    workspace: App['workspace'] & {
+        on: <K extends keyof ObsidianEvents>(event: K, callback: ObsidianEvents[K]) => EventRef;
+        off: <K extends keyof ObsidianEvents>(event: K, callback: ObsidianEvents[K]) => void;
+    };
+}
+
+export declare function waitForAIProviders(app: ExtendedApp, plugin: Plugin): Promise<{
+    promise: Promise<IAIProvidersService>;
+    cancel: () => void;
+}>;
+
+export declare function initAI(app: ExtendedApp, plugin: Plugin, onDone: () => Promise<void>): Promise<void>;
+
+export declare function waitForAI(): Promise<{
+    promise: Promise<IAIProvidersService>;
+    cancel: () => void;
+}>; 

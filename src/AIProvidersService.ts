@@ -1,5 +1,5 @@
 import { App, Notice } from 'obsidian';
-import { IAIProvider, IAIProvidersService, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIHandler } from './types';
+import { IAIProvider, IAIProvidersService, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIHandler } from '@obsidian-ai-providers/sdk';
 import { OpenAIHandler } from './handlers/OpenAIHandler';
 import { OllamaHandler } from './handlers/OllamaHandler';
 import { I18n } from './i18n';
@@ -60,7 +60,7 @@ export class AIProvidersService implements IAIProvidersService {
         const fieldsToCompare = ['type', 'apiKey', 'url', 'model'] as const;
         this.plugin.settings.providers = this.plugin.settings.providers || [];
         
-        const existingProvider = this.plugin.settings.providers.find(p => fieldsToCompare.every(field => p[field as keyof IAIProvider] === provider[field as keyof IAIProvider]));
+        const existingProvider = this.plugin.settings.providers.find((p: IAIProvider) => fieldsToCompare.every(field => p[field as keyof IAIProvider] === provider[field as keyof IAIProvider]));
         if (existingProvider) {
             return Promise.resolve(existingProvider);
         }
