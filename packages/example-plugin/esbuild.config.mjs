@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import { copyFilesPlugin } from "./copy-files-plugin.mjs";
 
 const banner =
 `/*
@@ -51,7 +52,12 @@ const context = await esbuild.context({
 	},
 	alias: {
 		'@sdk': '../sdk'
-	}
+	},
+	plugins: [
+		copyFilesPlugin([
+			{ from: './manifest.json', to: './dist/manifest.json' }
+		])
+	]
 });
 
 if (prod) {

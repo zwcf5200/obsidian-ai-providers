@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import { copyFilesPlugin } from "./copy-files-plugin.mjs";
 
 const banner =
 `/*
@@ -36,7 +37,13 @@ const context = await esbuild.context({
     keepNames: true,
     define: {
         'process.env.NODE_ENV': prod ? '"production"' : '"development"'
-    }
+    },
+    plugins: [
+        copyFilesPlugin([
+            { from: './styles.css', to: './dist/styles.css' },
+            { from: './types.d.ts', to: './dist/types.d.ts' }
+        ])
+    ]
 });
 
 if (prod) {

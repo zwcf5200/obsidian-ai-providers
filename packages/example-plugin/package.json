@@ -4,8 +4,8 @@
   "description": "Example plugin that demonstrates AI Providers integration",
   "main": "main.ts",
   "scripts": {
-    "dev": "node copy-files.mjs && node esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node copy-files.mjs && node esbuild.config.mjs production"
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
   },
   "author": "Pavel Frankov",
   "license": "MIT",

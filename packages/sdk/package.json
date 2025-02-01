@@ -1,9 +1,9 @@
 {
   "name": "@obsidian-ai-providers/sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": false,
   "scripts": {
-    "build": "tsc -p tsconfig.json && node esbuild.config.mjs production && cp types.d.ts dist/&& cp styles.css dist/",
+    "build": "tsc -p tsconfig.json && node esbuild.config.mjs production",
     "dev": "node esbuild.config.mjs",
     "prepare": "npm run build"
   },
@@ -49,4 +49,4 @@
   "publishConfig": {
     "access": "public"
   }
-} 
+}

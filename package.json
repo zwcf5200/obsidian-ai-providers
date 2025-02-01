@@ -10,7 +10,7 @@
 		"dev": "node copy-files.mjs && node esbuild.config.mjs",
 		"dev-test": "concurrently \"node copy-files.mjs && node esbuild.config.mjs\" \"npm run test:watch\"",
 		"build": "tsc -noEmit -skipLibCheck && node copy-files.mjs && node esbuild.config.mjs production",
-		"build:example": "cd packages/example-plugin && tsc -noEmit -skipLibCheck --project tsconfig.json && node copy-files.mjs && node esbuild.config.mjs production",
+		"build:example": "cd packages/example-plugin && npm run build",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"test": "jest",
 		"test:watch": "jest --watch",
