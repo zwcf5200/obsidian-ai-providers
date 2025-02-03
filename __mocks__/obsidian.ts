@@ -362,4 +362,10 @@ HTMLElement.prototype.createEl = function(tag: string, attrs?: { text?: string }
     }
     this.appendChild(el);
     return el;
-}; 
+};
+
+export function sanitizeHTMLToDom(html: string): DocumentFragment {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    return template.content;
+} 

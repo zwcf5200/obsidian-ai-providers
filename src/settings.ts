@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
+import {App, Notice, PluginSettingTab, sanitizeHTMLToDom, Setting} from 'obsidian';
 import AIProvidersPlugin from './main';
 import { I18n } from './i18n';
 import { ConfirmationModal } from './modals/ConfirmationModal';
@@ -276,7 +276,7 @@ export class AIProvidersSettingTab extends PluginSettingTab {
         // Add notice at the top
         const noticeEl = mainInterface.createDiv('ai-providers-notice');
         const noticeContent = noticeEl.createDiv('ai-providers-notice-content');
-        noticeContent.innerHTML = `${I18n.t('settings.notice')}`;
+        noticeContent.appendChild(sanitizeHTMLToDom(`${I18n.t('settings.notice')}`));
 
         // Create providers section with header and add button
         new Setting(mainInterface)
@@ -307,7 +307,7 @@ export class AIProvidersSettingTab extends PluginSettingTab {
                 // Add provider icon before the name
                 const nameEl = setting.nameEl;
                 const iconEl = createSpan({ cls: 'ai-providers-provider-icon' });
-                iconEl.innerHTML = provider.type === 'openai' ? openAIIcon : ollamaIcon;
+                iconEl.appendChild(sanitizeHTMLToDom(provider.type === 'openai' ? openAIIcon : ollamaIcon));
 
                 // Move icon to the beginning of the name
                 nameEl.prepend(iconEl as any);
