@@ -1,6 +1,8 @@
 # Obsidian AI Providers SDK
 This SDK is used to interact with the [AI Providers](https://github.com/obsidian-ai-providers/obsidian-ai-providers) plugin.
 
+Take a look at the [example plugin](../example-plugin/main.ts) to see how to use the SDK.
+
 ## Installation
 Install the SDK in your Obsidian plugin.
 

@@ -1,11 +1,10 @@
 {
   "name": "@obsidian-ai-providers/sdk",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": false,
   "scripts": {
     "build": "tsc -p tsconfig.json && node esbuild.config.mjs production",
-    "dev": "node esbuild.config.mjs",
-    "prepare": "npm run build"
+    "dev": "node esbuild.config.mjs"
   },
   "description": "SDK for integrating with AI Providers plugin",
   "homepage": "https://github.com/pfrankov/obsidian-ai-providers",
@@ -27,7 +26,11 @@
     "obsidian",
     "ai",
     "sdk",
-    "ai-providers"
+    "plugin",
+    "llm",
+    "gpt",
+    "openai",
+    "providers"
   ],
   "author": "Pavel Frankov",
   "license": "MIT",

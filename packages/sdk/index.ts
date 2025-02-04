@@ -1,4 +1,4 @@
-import { Plugin, PluginSettingTab, App } from "obsidian";
+import { Plugin, PluginSettingTab, App, sanitizeHTMLToDom } from "obsidian";
 import { ExtendedApp, IAIProvidersService } from './types';
 
 const FALLBACK_TIMEOUT = 100;
@@ -179,10 +179,10 @@ class AIProvidersFallbackSettingsTab extends PluginSettingTab {
             cls: "ai-providers-notice"
         });
 
-        aiProvidersNotice.innerHTML = `
+        aiProvidersNotice.appendChild(sanitizeHTMLToDom(`
             <p>⚠️ This plugin requires <a href="obsidian://show-plugin?id=ai-providers">AI Providers</a> plugin to be installed.</p>
             <p>Please install and configure AI Providers plugin first.</p>
-        `;
+        `));
     }
 }
 
