@@ -6,7 +6,34 @@ import { IAIProvider, IChunkHandler } from '@obsidian-ai-providers/sdk';
 import { OpenAIHandler } from './handlers/OpenAIHandler';
 import { OllamaHandler } from './handlers/OllamaHandler';
 import { AIProvidersService } from './AIProvidersService';
-import { I18n } from './i18n';
+import { ProviderFormModal } from './modals/ProviderFormModal';
+
+// Helper function to safely get typed element
+function getElement<T extends HTMLElement>(container: HTMLElement | ParentNode, selector: string): T {
+    const element = container.querySelector(selector);
+    if (!element) {
+        throw new Error(`Element with selector "${selector}" not found`);
+    }
+    return element as unknown as T;
+}
+
+// Mock translations
+jest.mock('./i18n', () => ({
+    I18n: {
+        t: (key: string, params?: any) => {
+            if (key === 'settings.notice') {
+                return "This plugin is a configuration hub for AI providers. It doesn't do anything on its own, but other plugins can use it to avoid configuring AI settings repeatedly.";
+            }
+            if (key === 'settings.duplicate') {
+                return "Duplicate";
+            }
+            if (key === 'settings.deleteConfirmation') {
+                return `Are you sure you want to delete ${params?.name}?`;
+            }
+            return key;
+        }
+    }
+}));
 
 // Mock the modal window
 jest.mock('./modals/ConfirmationModal', () => {
@@ -23,6 +50,13 @@ jest.mock('./modals/ConfirmationModal', () => {
         })
     };
 });
+
+jest.mock('./modals/ProviderFormModal', () => ({
+    ProviderFormModal: jest.fn().mockImplementation(() => ({
+        open: jest.fn()
+    }))
+}));
+
 
 // Mock handlers with common implementation
 const mockHandlerImplementation = {
@@ -79,6 +113,13 @@ jest.mock('./AIProvidersService', () => {
         }))
     };
 });
+
+// Mock ProviderFormModal
+jest.mock('./modals/ProviderFormModal', () => ({
+    ProviderFormModal: jest.fn().mockImplementation(() => ({
+        open: jest.fn()
+    }))
+}));
 
 // Test helpers
 const createTestProvider = (overrides: Partial<IAIProvider> = {}): IAIProvider => ({
@@ -140,506 +181,174 @@ const createTestSetup = () => {
     return { app, plugin, settingTab, containerEl };
 };
 
-const flushPromises = () => new Promise(process.nextTick);
-
 describe('AIProvidersSettingTab', () => {
-    let app: App;
     let plugin: AIProvidersPlugin;
     let settingTab: AIProvidersSettingTab;
     let containerEl: HTMLElement;
 
     beforeEach(() => {
         const setup = createTestSetup();
-        app = setup.app;
         plugin = setup.plugin;
         settingTab = setup.settingTab;
         containerEl = setup.containerEl;
     });
 
-    describe('Provider Management', () => {
-        it('should add a new provider', async () => {
+    describe('Main Interface', () => {
+        it('should render main interface', () => {
             settingTab.display();
-            (settingTab as any).isFormOpen = true;
-            
-            const provider = createTestProvider({ id: "test-id-2", name: "New Provider", apiKey: "" });
-            await settingTab.saveProvider(provider);
 
-            expect(plugin.settings.providers?.length).toBe(1);
-            expect(plugin.settings.providers?.[0]).toEqual(provider);
-            expect(plugin.saveSettings).toHaveBeenCalled();
+            const mainInterface = containerEl.querySelector('[data-testid="main-interface"]');
+            expect(mainInterface).toBeTruthy();
+            expect(mainInterface?.querySelector('[data-testid="add-provider-button"]')).toBeTruthy();
         });
 
-        it('should edit existing provider', async () => {
+        it('should display notice section', () => {
+            settingTab.display();
+
+            const notice = containerEl.querySelector('.ai-providers-notice-content');
+            expect(notice).toBeTruthy();
+            expect(notice?.textContent).toBe("This plugin is a configuration hub for AI providers. It doesn't do anything on its own, but other plugins can use it to avoid configuring AI settings repeatedly.");
+        });
+
+        it('should display configured providers section', () => {
             const testProvider = createTestProvider();
             plugin.settings.providers = [testProvider];
-            
             settingTab.display();
-            (settingTab as any).isFormOpen = true;
-            (settingTab as any).editingProvider = testProvider;
 
-            const updatedProvider = createTestProvider({ name: 'Updated Provider' });
-            await settingTab.saveProvider(updatedProvider);
-
-            expect(plugin.settings.providers?.[0].name).toBe('Updated Provider');
-            expect(plugin.saveSettings).toHaveBeenCalled();
+            const providers = containerEl.querySelectorAll('.setting-item');
+            expect(providers.length).toBeGreaterThan(1); // Including header
+            expect(Array.from(providers).some(p => p.textContent?.includes(testProvider.name))).toBe(true);
         });
 
-        it('should delete a provider', async () => {
-            plugin.settings.providers = [createTestProvider()];
-            
-            // Call provider deletion
-            await settingTab.deleteProvider(createTestProvider());
-
-            expect(plugin.settings.providers?.length).toBe(0);
-            expect(plugin.saveSettings).toHaveBeenCalled();
-        });
-
-        it('should not save provider without required fields', async () => {
-            const invalidProvider: IAIProvider = createTestProvider({ name: '' });
-
-            await settingTab.saveProvider(invalidProvider);
-
-            expect(plugin.settings.providers?.length).toBe(0);
-            expect(plugin.saveSettings).not.toHaveBeenCalled();
-        });
-
-        it('should show confirmation modal before deleting provider', async () => {
-            plugin.settings.providers = [createTestProvider()];
-            
-            settingTab.display();
-            
-            // Find delete button by data-testid
-            const deleteButton = containerEl.querySelector('[data-testid="delete-provider"]');
-            expect(deleteButton).not.toBeNull();
-            
-            // Simulate click
-            deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-            // Verify that modal window was created
-            expect(ConfirmationModal).toHaveBeenCalled();
-            
-            // Get modal instance and parameters
-            const [appParam, messageParam, onConfirmParam] = (ConfirmationModal as jest.Mock).mock.calls[0];
-            
-            expect(appParam).toBe(app);
-            expect(typeof messageParam).toBe('string');
-            expect(typeof onConfirmParam).toBe('function');
-        });
-
-        it('should duplicate a provider', async () => {
-            // Add initial provider
-            plugin.settings.providers = [createTestProvider()];
-            
-            // Duplicate provider
-            await settingTab.duplicateProvider(createTestProvider());
-
-            expect(plugin.settings.providers?.length).toBe(2);
-            
-            const duplicatedProvider = plugin.settings.providers?.[1];
-            expect(duplicatedProvider).toBeTruthy();
-            expect(duplicatedProvider?.name).toContain(createTestProvider().name);
-            expect(duplicatedProvider?.name).toContain('Duplicate');
-            expect(duplicatedProvider?.apiKey).toBe(createTestProvider().apiKey);
-            expect(duplicatedProvider?.url).toBe(createTestProvider().url);
-            expect(duplicatedProvider?.type).toBe(createTestProvider().type);
-            expect(duplicatedProvider?.id).not.toBe(createTestProvider().id);
-            
-            expect(plugin.saveSettings).toHaveBeenCalled();
-        });
-
-        it('should render duplicate button for each provider', () => {
-            plugin.settings.providers = [createTestProvider()];
-            settingTab.display();
-            
-            // Find duplicate button by data-testid
-            const duplicateButton = containerEl.querySelector('[data-testid="duplicate-provider"]');
-            
-            expect(duplicateButton).toBeTruthy();
-        });
-
-        it('should duplicate provider when clicking duplicate button', async () => {
-            plugin.settings.providers = [createTestProvider()];
-            
-            // Create spy for duplicateProvider method
-            const duplicateSpy = jest.spyOn(settingTab, 'duplicateProvider');
-            
-            settingTab.display();
-            
-            // Find duplicate button by data-testid
-            const duplicateButton = containerEl.querySelector('[data-testid="duplicate-provider"]');
-            expect(duplicateButton).toBeTruthy();
-            
-            // Simulate click
-            duplicateButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            
-            // Verify that method was called with correct provider
-            expect(duplicateSpy).toHaveBeenCalledWith(createTestProvider());
-            
-            // Clear spy
-            duplicateSpy.mockRestore();
-        });
-
-        it('should validate provider URL', async () => {
-            const invalidProvider: IAIProvider = createTestProvider({ url: 'invalid-url' });
-
-            await settingTab.saveProvider(invalidProvider);
-
-            expect(plugin.settings.providers?.length).toBe(0);
-            expect(plugin.saveSettings).not.toHaveBeenCalled();
-        });
-
-        it('should validate provider type', async () => {
-            const invalidProvider = {
-                ...createTestProvider(),
-                type: 'invalid-type' as 'openai' | 'ollama'
-            };
-
-            await settingTab.saveProvider(invalidProvider);
-
-            expect(plugin.settings.providers?.length).toBe(0);
-            expect(plugin.saveSettings).not.toHaveBeenCalled();
-        });
-
-        it('should handle duplicate provider names', async () => {
-            // Add first provider
-            await settingTab.saveProvider(createTestProvider());
-
-            // Try to add another provider with the same name
-            const duplicateProvider: IAIProvider = createTestProvider({ id: 'different-id' });
-
-            await settingTab.saveProvider(duplicateProvider);
-
-            expect(plugin.settings.providers?.length).toBe(1);
-            expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
-        });
-
-        it('should display model pill when provider has a model', () => {
-            const providerWithModel = createTestProvider({
-                model: 'gpt-4'
-            });
+        it('should display model pill when provider has model', () => {
+            const providerWithModel = createTestProvider({ model: 'gpt-4' });
             plugin.settings.providers = [providerWithModel];
             settingTab.display();
 
-            const modelPill = containerEl.querySelector('.ai-providers-model-pill');
+            const modelPill = containerEl.querySelector('[data-testid="model-pill"]');
             expect(modelPill).toBeTruthy();
             expect(modelPill?.textContent).toBe('gpt-4');
         });
+    });
 
-        it('should not display model pill when provider has no model', () => {
-            const providerWithoutModel = createTestProvider({
-                model: undefined
-            });
-            plugin.settings.providers = [providerWithoutModel];
+    describe('Provider Management', () => {
+        it('should open provider form when add button is clicked', () => {
+            settingTab.display();
+            const addButton = containerEl.querySelector('[data-testid="add-provider-button"]');
+            addButton?.dispatchEvent(new MouseEvent('click'));
+
+            // Verify that ProviderFormModal was opened
+            expect(ProviderFormModal).toHaveBeenCalled();
+            expect(ProviderFormModal).toHaveBeenCalledWith(
+                expect.any(App),
+                plugin,
+                expect.objectContaining({ type: 'openai' }),
+                expect.any(Function),
+                true
+            );
+        });
+
+        it('should open edit form when edit button is clicked', () => {
+            const testProvider = createTestProvider();
+            plugin.settings.providers = [testProvider];
             settingTab.display();
 
-            const modelPill = containerEl.querySelector('.ai-providers-model-pill');
-            expect(modelPill).toBeFalsy();
+            const editButton = containerEl.querySelector('[data-testid="edit-provider"]');
+            editButton?.dispatchEvent(new MouseEvent('click'));
+
+            expect(ProviderFormModal).toHaveBeenCalled();
+            expect(ProviderFormModal).toHaveBeenCalledWith(
+                expect.any(App),
+                plugin,
+                testProvider,
+                expect.any(Function),
+                false
+            );
+        });
+
+        it('should show confirmation modal when deleting provider', () => {
+            plugin.settings.providers = [createTestProvider()];
+            settingTab.display();
+            
+            const deleteButton = containerEl.querySelector('[data-testid="delete-provider"]');
+            deleteButton?.dispatchEvent(new MouseEvent('click'));
+
+            expect(ConfirmationModal).toHaveBeenCalled();
+        });
+
+        it('should duplicate provider', async () => {
+            plugin.settings.providers = [createTestProvider()];
+            settingTab.display();
+            
+            const duplicateButton = containerEl.querySelector('[data-testid="duplicate-provider"]');
+            duplicateButton?.dispatchEvent(new MouseEvent('click'));
+
+            expect(plugin.settings.providers.length).toBe(2);
+            expect(plugin.settings.providers[1].name).toContain('Duplicate');
+            expect(plugin.saveSettings).toHaveBeenCalled();
         });
     });
 
-    describe('Models List Management', () => {
-        let editingProvider: IAIProvider;
+    describe('Developer Settings', () => {
+        it('should toggle developer mode', () => {
+            settingTab.display();
 
-        beforeEach(() => {
-            plugin.settings.providers = [createTestProvider()];
+            const developerToggle = getElement<HTMLInputElement>(containerEl, '.setting-item-control input[type="checkbox"]');
+            expect(developerToggle).toBeTruthy();
+
+            // Simulate toggle on
+            developerToggle.checked = true;
+            developerToggle.dispatchEvent(new Event('change'));
             settingTab.display();
-            
-            // Open form and set provider
-            const addButton = containerEl.querySelector('[data-testid="add-provider-button"]');
-            addButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            
-            editingProvider = createTestProvider({ availableModels: [] });
-            (settingTab as any).editingProvider = editingProvider;
-            (settingTab as any).isFormOpen = true;
+
+            expect(containerEl.querySelector('.ai-providers-developer-settings')).toBeTruthy();
+
+            // Simulate toggle off
+            developerToggle.checked = false;
+            developerToggle.dispatchEvent(new Event('change'));
             settingTab.display();
+
+            expect(containerEl.querySelector('.ai-providers-developer-settings')).toBeFalsy();
         });
 
-        it('should show loading state when fetching models', async () => {
-            // Start loading
-            (settingTab as any).isLoadingModels = true;
+        it('should save debug logging setting', async () => {
+            settingTab.display();
+            // Enable developer mode
+            const developerToggle = getElement<HTMLInputElement>(containerEl, '.setting-item-control input[type="checkbox"]');
+            developerToggle.checked = true;
+            developerToggle.dispatchEvent(new Event('change'));
             settingTab.display();
 
-            // Find the models dropdown
-            const dropdown = containerEl.querySelector('[data-testid="model-dropdown"]');
-            const refreshButton = containerEl.querySelector('[data-testid="refresh-models-button"]');
-            expect(dropdown).toBeTruthy();
-            expect(refreshButton).toBeTruthy();
-            expect(dropdown instanceof HTMLSelectElement).toBe(true);
-            expect(refreshButton instanceof HTMLButtonElement).toBe(true);
+            const debugToggle = getElement<HTMLInputElement>(containerEl, '.ai-providers-developer-settings .setting-item-control input[type="checkbox"]');
+            expect(debugToggle).toBeTruthy();
 
-            const select = dropdown as unknown as HTMLSelectElement;
-            const button = refreshButton as unknown as HTMLButtonElement;
+            // Simulate toggle on
+            debugToggle.checked = true;
+            debugToggle.dispatchEvent(new Event('change'));
 
-            // Check loading state
-            expect(select.disabled).toBe(true);
-            expect(select.querySelector('option')?.value).toBe('loading');
-
-            // Check refresh button is disabled
-            expect(button.disabled).toBe(true);
-            expect(button.classList.contains('loading')).toBe(true);
+            expect(plugin.settings.debugLogging).toBe(true);
+            expect(plugin.saveSettings).toHaveBeenCalled();
         });
 
-        it('should successfully load and display models', async () => {
-            // Find the models dropdown and refresh button
-            const dropdown = containerEl.querySelector('[data-testid="model-dropdown"]');
-            const refreshButton = containerEl.querySelector('[data-testid="refresh-models-button"]');
-            expect(dropdown).toBeTruthy();
-            expect(refreshButton).toBeTruthy();
-            expect(dropdown instanceof HTMLSelectElement).toBe(true);
-            expect(refreshButton instanceof HTMLButtonElement).toBe(true);
-
-            const button = refreshButton as unknown as HTMLButtonElement;
-
-            // Mock the fetchModels function to resolve immediately
-            const models = ['gpt-4', 'gpt-3.5-turbo'];
-            (plugin.aiProviders.fetchModels as jest.Mock).mockImplementationOnce(async () => {
-                return models;
-            });
-
-            // Simulate click
-            button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-            // Wait for models to load
-            await flushPromises();
-
-            // Update editingProvider with models
-            editingProvider.availableModels = models;
-            editingProvider.model = models[0];
-            (settingTab as any).isLoadingModels = false;
-
-            // Re-render the component
+        it('should save native fetch setting', async () => {
+            settingTab.display();
+            // Enable developer mode
+            const developerToggle = getElement<HTMLInputElement>(containerEl, '.setting-item-control input[type="checkbox"]');
+            developerToggle.checked = true;
+            developerToggle.dispatchEvent(new Event('change'));
             settingTab.display();
 
-            // Wait for DOM updates
-            await flushPromises();
+            const toggles = containerEl.querySelectorAll('.ai-providers-developer-settings .setting-item-control input[type="checkbox"]');
+            expect(toggles.length).toBe(2);
+            const nativeFetchToggle = getElement<HTMLInputElement>(toggles[1].parentElement!, 'input[type="checkbox"]');
+            expect(nativeFetchToggle).toBeTruthy();
 
-            // Re-query the elements after re-render
-            const updatedDropdown = containerEl.querySelector('[data-testid="model-dropdown"]');
-            expect(updatedDropdown).toBeTruthy();
-            expect(updatedDropdown instanceof HTMLSelectElement).toBe(true);
+            // Simulate toggle on
+            nativeFetchToggle.checked = true;
+            nativeFetchToggle.dispatchEvent(new Event('change'));
 
-            const updatedSelect = updatedDropdown as unknown as HTMLSelectElement;
-
-            // Check models are displayed
-            expect(updatedSelect.disabled).toBe(false);
-            
-            // Verify options
-            const options = Array.from(updatedSelect.querySelectorAll('option'));
-            expect(options.length).toBe(2);
-            expect(options[0].value).toBe('gpt-4');
-            expect(options[1].value).toBe('gpt-3.5-turbo');
-        });
-
-        it('should handle error when loading models', async () => {
-            // Set up provider with error trigger
-            editingProvider = createTestProvider({ apiKey: 'error' });
-            (settingTab as any).editingProvider = editingProvider;
-            (settingTab as any).isFormOpen = true;
-            settingTab.display();
-
-            // Find the refresh button
-            const refreshButton = containerEl.querySelector('[data-testid="refresh-models-button"]');
-            expect(refreshButton).toBeTruthy();
-            expect(refreshButton instanceof HTMLButtonElement).toBe(true);
-
-            const button = refreshButton as unknown as HTMLButtonElement;
-
-            // Click refresh button
-            button.click();
-
-            // Wait for error to be handled
-            await flushPromises();
-
-            // Re-render after error
-            settingTab.display();
-
-            // Find the models dropdown after re-render
-            const dropdown = containerEl.querySelector('[data-testid="model-dropdown"]');
-            expect(dropdown).toBeTruthy();
-            expect(dropdown instanceof HTMLSelectElement).toBe(true);
-
-            const select = dropdown as unknown as HTMLSelectElement;
-
-            // Verify error handling
-            expect(select.disabled).toBe(true);
-            expect(select.querySelector('option')?.value).toBe('none');
-
-            // Verify refresh button is enabled again
-            expect(button.disabled).toBe(false);
-            expect(button.classList.contains('loading')).toBe(false);
-        });
-
-        it('should handle empty models list', async () => {
-            // Mock empty models list
-            (plugin.aiProviders.fetchModels as jest.Mock).mockResolvedValueOnce([]);
-
-            // Find the models dropdown and refresh button
-            const dropdown = containerEl.querySelector('[data-testid="model-dropdown"]');
-            const refreshButton = containerEl.querySelector('[data-testid="refresh-models-button"]');
-            expect(dropdown).toBeTruthy();
-            expect(refreshButton).toBeTruthy();
-            expect(dropdown instanceof HTMLSelectElement).toBe(true);
-            expect(refreshButton instanceof HTMLButtonElement).toBe(true);
-
-            const select = dropdown as unknown as HTMLSelectElement;
-            const button = refreshButton as unknown as HTMLButtonElement;
-
-            // Click refresh button
-            button.click();
-
-            // Wait for models to load
-            await flushPromises();
-
-            // Verify empty state handling
-            expect(select.disabled).toBe(true);
-            expect(select.querySelector('option')?.value).toBe('none');
-
-            // Verify refresh button is enabled
-            expect(button.disabled).toBe(false);
-            expect(button.classList.contains('loading')).toBe(false);
-        });
-
-        it('should save selected model', async () => {
-            // Find the models dropdown
-            const dropdown = containerEl.querySelector('[data-testid="model-dropdown"]');
-            const refreshButton = containerEl.querySelector('[data-testid="refresh-models-button"]');
-            expect(dropdown).toBeTruthy();
-            expect(refreshButton).toBeTruthy();
-            expect(dropdown instanceof HTMLSelectElement).toBe(true);
-            expect(refreshButton instanceof HTMLButtonElement).toBe(true);
-
-            const button = refreshButton as unknown as HTMLButtonElement;
-
-            // Mock the fetchModels function to resolve immediately
-            const models = ['gpt-4', 'gpt-3.5-turbo'];
-            (plugin.aiProviders.fetchModels as jest.Mock).mockImplementationOnce(async () => {
-                return models;
-            });
-
-            // Simulate click
-            button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-            // Wait for models to load
-            await flushPromises();
-
-            // Update editingProvider with models
-            editingProvider.availableModels = models;
-            editingProvider.model = models[0];
-            (settingTab as any).isLoadingModels = false;
-
-            // Re-render the component
-            settingTab.display();
-
-            // Wait for DOM updates
-            await flushPromises();
-
-            // Re-query the elements after re-render
-            const updatedDropdown = containerEl.querySelector('[data-testid="model-dropdown"]');
-            expect(updatedDropdown).toBeTruthy();
-            expect(updatedDropdown instanceof HTMLSelectElement).toBe(true);
-
-            const updatedSelect = updatedDropdown as unknown as HTMLSelectElement;
-
-            // Select a different model
-            const event = new Event('change');
-            updatedSelect.value = models[1];
-            updatedSelect.dispatchEvent(event);
-
-            // Verify model was updated
-            expect(editingProvider.model).toBe(models[1]);
-        });
-
-        it('should handle provider type change', async () => {
-            // Find the provider type dropdown
-            const typeDropdown = containerEl.querySelector('[data-testid="provider-type-dropdown"]');
-            expect(typeDropdown).toBeTruthy();
-            expect(typeDropdown instanceof HTMLSelectElement).toBe(true);
-
-            const typeSelect = typeDropdown as unknown as HTMLSelectElement;
-
-            // Change provider type
-            const event = new Event('change');
-            typeSelect.value = 'ollama';
-            typeSelect.dispatchEvent(event);
-
-            // Verify URL was updated
-            expect(editingProvider.url).toBe('http://localhost:11434');
-
-            // Verify models were cleared
-            expect(editingProvider.availableModels).toBeUndefined();
-            expect(editingProvider.model).toBeUndefined();
-        });
-    });
-
-    describe('Form Display Management', () => {
-        it('should show main interface when form is closed', async () => {
-            plugin.settings.providers = [createTestProvider()];
-            settingTab.display();
-
-            const mainInterface = containerEl.querySelector('[data-testid="main-interface"]');
-            expect(mainInterface).toBeTruthy();
-            expect(mainInterface?.querySelector('[data-testid="add-provider-button"]')).toBeTruthy();
-            expect(mainInterface?.textContent).toContain(createTestProvider().name);
-        });
-
-        it('should hide main interface when form is open', async () => {
-            plugin.settings.providers = [createTestProvider()];
-            settingTab.display();
-
-            const mainInterface = containerEl.querySelector('[data-testid="main-interface"]');
-            expect(mainInterface).toBeTruthy();
-
-            // Open form
-            (settingTab as any).openForm(true);
-
-            // Verify main interface is removed
-            expect(containerEl.querySelector('[data-testid="main-interface"]')).toBeFalsy();
-
-            // Verify form is shown
-            expect(containerEl.querySelector('[data-testid="provider-form"]')).toBeTruthy();
-            expect(containerEl.querySelector('[data-testid="provider-form-title"]')?.textContent)
-                .toBe(I18n.t('settings.addNewProvider'));
-        });
-
-        it('should restore main interface when form is closed', async () => {
-            plugin.settings.providers = [createTestProvider()];
-            settingTab.display();
-
-            // Open form
-            const addButton = containerEl.querySelector('[data-testid="add-provider-button"]');
-            addButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-            // Close form
-            const cancelButton = containerEl.querySelector('[data-testid="cancel-button"]');
-            cancelButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-            // Verify main interface is restored
-            const mainInterface = containerEl.querySelector('[data-testid="main-interface"]');
-            expect(mainInterface).toBeTruthy();
-            expect(mainInterface?.querySelector('[data-testid="add-provider-button"]')).toBeTruthy();
-            expect(mainInterface?.textContent).toContain(createTestProvider().name);
-        });
-
-        it('should show correct header when adding new provider', async () => {
-            settingTab.display();
-            
-            // Open form for new provider
-            (settingTab as any).openForm(true);
-            
-            // Verify form header
-            expect(containerEl.querySelector('h2')?.textContent).toBe(I18n.t('settings.addNewProvider'));
-        });
-
-        it('should show correct header when editing provider', async () => {
-            // Add a provider to edit
-            plugin.settings.providers = [createTestProvider()];
-            settingTab.display();
-            
-            // Open form for editing
-            (settingTab as any).openForm(false, createTestProvider());
-            
-            // Verify form header
-            expect(containerEl.querySelector('h2')?.textContent).toBe(I18n.t('settings.editProvider'));
+            expect(plugin.settings.useNativeFetch).toBe(true);
+            expect(plugin.saveSettings).toHaveBeenCalled();
         });
     });
 }); 

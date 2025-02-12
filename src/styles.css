@@ -10,19 +10,6 @@
     text-shadow: var(--background-primary) 0 0 1px, var(--background-primary) 0 0 1px;
 }
 
-.ai-providers-provider-icon {
-    display: inline-flex;
-    align-items: center;
-    margin-right: 6px;
-    vertical-align: text-top;
-}
-
-.ai-providers-provider-icon svg {
-    width: 16px;
-    height: 16px;
-    fill: var(--text-muted);
-}
-
 .ai-providers-developer-settings-toggle {
     margin-top: 1.5em;
     border: 0;

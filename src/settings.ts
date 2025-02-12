@@ -1,10 +1,10 @@
-import {App, Notice, PluginSettingTab, sanitizeHTMLToDom, Setting} from 'obsidian';
+import {App, PluginSettingTab, sanitizeHTMLToDom, Setting} from 'obsidian';
 import AIProvidersPlugin from './main';
 import { I18n } from './i18n';
 import { ConfirmationModal } from './modals/ConfirmationModal';
 import { IAIProvider, IAIProvidersPluginSettings } from '@obsidian-ai-providers/sdk';
-import { openAIIcon, ollamaIcon } from './utils/icons';
 import { logger } from './utils/logger';
+import { ProviderFormModal } from './modals/ProviderFormModal';
 
 
 export const DEFAULT_SETTINGS: IAIProvidersPluginSettings = {
@@ -32,9 +32,7 @@ export class AIProvidersSettingTab extends PluginSettingTab {
     }
 
     private openForm(isAdding: boolean, provider?: IAIProvider) {
-        this.isFormOpen = true;
-        this.isAddingNewProvider = isAdding;
-        this.editingProvider = provider || {
+        const editingProvider = provider || {
             id: `id-${Date.now().toString()}`,
             name: "",
             apiKey: "",
@@ -42,7 +40,16 @@ export class AIProvidersSettingTab extends PluginSettingTab {
             type: "openai",
             model: "",
         };
-        this.display();
+
+        new ProviderFormModal(
+            this.app,
+            this.plugin,
+            editingProvider,
+            async (updatedProvider) => {
+                await this.saveProvider(updatedProvider);
+            },
+            isAdding
+        ).open();
     }
 
     private closeForm() {
@@ -128,148 +135,7 @@ export class AIProvidersSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        // If form is open, show only the form
-        if (this.isFormOpen && this.editingProvider) {
-            const formEl = containerEl.createDiv('ai-providers-form');
-            formEl.setAttribute('data-testid', 'provider-form');
-            const provider = this.editingProvider;
-            
-            // Add form title
-            const titleEl = formEl.createEl('h2', { 
-                text: this.isAddingNewProvider 
-                    ? I18n.t('settings.addNewProvider')
-                    : I18n.t('settings.editProvider') 
-            });
-            titleEl.setAttribute('data-testid', 'provider-form-title');
-
-            new Setting(formEl)
-                .setName(I18n.t('settings.providerType'))
-                .setDesc(I18n.t('settings.providerTypeDesc'))
-                .addDropdown(dropdown => {
-                    dropdown
-                        .addOptions({
-                            "openai": "OpenAI",
-                            "ollama": "Ollama"
-                        })
-                        .setValue(provider.type)
-                        .onChange(value => {
-                            provider.type = value as 'openai' | 'ollama';
-                            provider.url = this.defaultProvidersUrls[value as 'openai' | 'ollama'];
-                            provider.availableModels = undefined;
-                            provider.model = undefined;
-                            this.display();
-                        });
-                    
-                    dropdown.selectEl.setAttribute('data-testid', 'provider-type-dropdown');
-                    return dropdown;
-                });
-
-            new Setting(formEl)
-                .setName(I18n.t('settings.providerName'))
-                .setDesc(I18n.t('settings.providerNameDesc'))
-                .addText(text => text
-                    .setPlaceholder(I18n.t('settings.providerNamePlaceholder'))
-                    .setValue(provider.name)
-                    .onChange(value => provider.name = value));
-
-            new Setting(formEl)
-                .setName(I18n.t('settings.providerUrl'))
-                .setDesc(I18n.t('settings.providerUrlDesc'))
-                .addText(text => text
-                    .setPlaceholder(I18n.t('settings.providerUrlPlaceholder'))
-                    .setValue(provider.url || '')
-                    .onChange(value => provider.url = value));
-
-            new Setting(formEl)
-                .setName(I18n.t('settings.apiKey'))
-                .setDesc(I18n.t('settings.apiKeyDesc'))
-                .addText(text => text
-                    .setPlaceholder(I18n.t('settings.apiKeyPlaceholder'))
-                    .setValue(provider.apiKey || '')
-                    .onChange(value => provider.apiKey = value));
-
-            new Setting(formEl)
-                .setName(I18n.t('settings.model'))
-                .setDesc(I18n.t('settings.modelDesc'))
-                .addDropdown(dropdown => {
-                    if (this.isLoadingModels) {
-                        dropdown.addOption('loading', I18n.t('settings.loadingModels'));
-                        dropdown.setDisabled(true);
-                    } else {
-                        const models = provider.availableModels;
-                        if (!models || models.length === 0) {
-                            dropdown.addOption('none', I18n.t('settings.noModelsAvailable'));
-                            dropdown.setDisabled(true);
-                        } else {
-                            models.forEach(model => dropdown.addOption(model, model));
-                            dropdown.setDisabled(false);
-                        }
-                    }
-
-                    dropdown
-                        .setValue(provider.model || "")
-                        .onChange(value => {
-                            provider.model = value;
-                        });
-                    
-                    dropdown.selectEl.setAttribute('data-testid', 'model-dropdown');
-                    return dropdown;
-                })
-                .addButton(button => {
-                    button
-                        .setIcon("refresh-cw")
-                        .setTooltip(I18n.t('settings.refreshModelsList'));
-                    
-                    button.buttonEl.setAttribute('data-testid', 'refresh-models-button');
-                    
-                    if (this.isLoadingModels) {
-                        button.setDisabled(true);
-                        button.buttonEl.addClass('loading');
-                    }
-                    
-                    button.onClick(async () => {
-                        try {
-                            this.isLoadingModels = true;
-                            this.display();
-                            
-                            const models = await this.plugin.aiProviders.fetchModels(provider);
-                            provider.availableModels = models;
-                            if (models.length > 0) {
-                                provider.model = models[0] || "";
-                            }
-                            
-                            new Notice(I18n.t('settings.modelsUpdated'));
-                        } catch (error) {
-                            logger.error('Failed to fetch models:', error);
-                            new Notice(I18n.t('errors.failedToFetchModels'));
-                        } finally {
-                            this.isLoadingModels = false;
-                            this.display();
-                        }
-                    });
-                });
-
-            new Setting(formEl)
-                .addButton(button => button
-                    .setButtonText(I18n.t('settings.save'))
-                    .setCta()
-                    .onClick(async () => {
-                        await this.saveProvider(provider);
-                    }))
-                .addButton(button => {
-                    button
-                        .setButtonText(I18n.t('settings.cancel'))
-                        .onClick(() => {
-                            this.closeForm();
-                        });
-                    button.buttonEl.setAttribute('data-testid', 'cancel-button');
-                    return button;
-                });
-
-            return;
-        }
-
-        // Show main interface only if form is closed
+        // Show main interface
         const mainInterface = containerEl.createDiv('ai-providers-main-interface');
         mainInterface.setAttribute('data-testid', 'main-interface');
 
@@ -304,20 +170,12 @@ export class AIProvidersSettingTab extends PluginSettingTab {
                     .setName(provider.name)
                     .setDesc(provider.url || '');
 
-                // Add provider icon before the name
-                const nameEl = setting.nameEl;
-                const iconEl = createSpan({ cls: 'ai-providers-provider-icon' });
-                iconEl.appendChild(sanitizeHTMLToDom(provider.type === 'openai' ? openAIIcon : ollamaIcon));
-
-                // Move icon to the beginning of the name
-                nameEl.prepend(iconEl as any);
-
                 // Add model pill if model is selected
                 if (provider.model) {
                     const modelPill = setting.settingEl.createDiv('ai-providers-model-pill');
                     modelPill.textContent = provider.model;
                     modelPill.setAttribute('data-testid', 'model-pill');
-                    nameEl.after(modelPill as any);
+                    setting.nameEl.after(modelPill as any);
                 }
 
                 setting

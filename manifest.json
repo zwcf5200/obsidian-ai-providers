@@ -6,6 +6,5 @@
 	"description": "A hub for setting AI providers (OpenAI-like, Ollama and more) in one place.",
 	"author": "Pavel Frankov",
 	"authorUrl": "https://github.com/pfrankov",
-	"isDesktopOnly": false,
-	"main": "dist/main.js"
+	"isDesktopOnly": false
 }
