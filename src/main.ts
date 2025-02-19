@@ -1,8 +1,9 @@
-import { Plugin } from 'obsidian';
+import { Plugin, addIcon } from 'obsidian';
 import { IAIProvidersPluginSettings } from '@obsidian-ai-providers/sdk';
 import { DEFAULT_SETTINGS, AIProvidersSettingTab } from './settings';
 import { AIProvidersService } from './AIProvidersService';
 import { logger } from './utils/logger';
+import { openAIIcon, ollamaIcon } from './utils/icons';
 
 export default class AIProvidersPlugin extends Plugin {
 	settings: IAIProvidersPluginSettings;
@@ -10,6 +11,8 @@ export default class AIProvidersPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+		addIcon('ai-providers-openai', openAIIcon);
+		addIcon('ai-providers-ollama', ollamaIcon);
 
 		const settingTab = new AIProvidersSettingTab(this.app, this);
 		this.exposeAIProviders();

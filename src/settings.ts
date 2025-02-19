@@ -1,4 +1,4 @@
-import {App, PluginSettingTab, sanitizeHTMLToDom, Setting} from 'obsidian';
+import {App, PluginSettingTab, sanitizeHTMLToDom, Setting, setIcon} from 'obsidian';
 import AIProvidersPlugin from './main';
 import { I18n } from './i18n';
 import { ConfirmationModal } from './modals/ConfirmationModal';
@@ -15,14 +15,7 @@ export const DEFAULT_SETTINGS: IAIProvidersPluginSettings = {
 
 export class AIProvidersSettingTab extends PluginSettingTab {
     private isFormOpen = false;
-    private editingProvider: IAIProvider | null = null;
-    private isLoadingModels = false;
-    private isAddingNewProvider = false;
     private isDeveloperMode = false;
-    private readonly defaultProvidersUrls = {
-        openai: "https://api.openai.com/v1",
-        ollama: "http://localhost:11434"
-    };
 
     plugin: AIProvidersPlugin;
 
@@ -54,8 +47,6 @@ export class AIProvidersSettingTab extends PluginSettingTab {
 
     private closeForm() {
         this.isFormOpen = false;
-        this.isAddingNewProvider = false;
-        this.editingProvider = null;
         this.display();
     }
 
@@ -169,6 +160,11 @@ export class AIProvidersSettingTab extends PluginSettingTab {
                 const setting = new Setting(mainInterface)
                     .setName(provider.name)
                     .setDesc(provider.url || '');
+
+                // Add provider icon before the name
+                const iconEl = setting.nameEl.createSpan('ai-providers-provider-icon');
+                setIcon(iconEl, `ai-providers-${provider.type}`);
+                setting.nameEl.prepend(iconEl as any);
 
                 // Add model pill if model is selected
                 if (provider.model) {

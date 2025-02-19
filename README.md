@@ -35,10 +35,10 @@ You can install this plugin via [BRAT](https://obsidian.md/plugins?id=obsidian42
 ## Roadmap
 - [x] Docs for devs
 - [x] Ollama context optimizations
+- [x] Image processing support
 - [ ] Gemini Provider support
 - [ ] Anthropic Provider support
 - [ ] Groq Provider support
-- [ ] Image processing support
 - [ ] Shared embeddings to avoid re-embedding the same documents multiple times
 - [ ] Spanish, Italian, French, Dutch, Portuguese, Japanese, Korean translations
 - [ ] Incapsulated basic RAG search with optional BM25 search

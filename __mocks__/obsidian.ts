@@ -5,6 +5,12 @@ export class Notice {
     constructor(message: string) {}
 }
 
+export function addIcon(name: string, icon: string) {}
+
+export function setIcon(el: HTMLElement, name: string) {
+    el.setAttribute('data-icon', name);
+}
+
 export class Plugin {
     app: App;
     manifest: any;
@@ -328,6 +334,7 @@ declare global {
         createDiv(className?: string): HTMLElement;
         empty(): void;
         createEl(tag: string, attrs?: { text?: string }, cls?: string): HTMLElement;
+        createSpan(className?: string): HTMLElement;
     }
 }
 
@@ -362,6 +369,15 @@ HTMLElement.prototype.createEl = function(tag: string, attrs?: { text?: string }
     }
     this.appendChild(el);
     return el;
+};
+
+HTMLElement.prototype.createSpan = function(className?: string): HTMLElement {
+    const span = document.createElement('span');
+    if (className) {
+        span.className = className;
+    }
+    this.appendChild(span);
+    return span;
 };
 
 export function sanitizeHTMLToDom(html: string): DocumentFragment {
