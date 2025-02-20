@@ -17,7 +17,8 @@ Think of it like a control panel where you can:
 
 ## Supported providers
 - Ollama
-- OpenAI compatible API
+- OpenAI
+- OpenAI compatible API (OpenRouter)
 
 ## Features
 - Fully encapsulated API for working with AI providers
@@ -32,6 +33,32 @@ This plugin is available in the Obsidian community plugin store https://obsidian
 ### BRAT
 You can install this plugin via [BRAT](https://obsidian.md/plugins?id=obsidian42-brat): `pfrankov/obsidian-ai-providers`
 
+## Create AI provider
+### Ollama
+1. Install [Ollama](https://ollama.com/).
+2. Install Gemma 2 `ollama pull gemma2` or any preferred model [from the library](https://ollama.com/library).
+3. Select `Ollama` in `Provider type`
+4. Click refresh button and select the model that suits your needs (e.g. `gemma2`)
+
+Additional: if you have issues with streaming completion with Ollama try to set environment variable `OLLAMA_ORIGINS` to `*`:
+- For MacOS run `launchctl setenv OLLAMA_ORIGINS "*"`.
+- For Linux and Windows [check the docs](https://github.com/ollama/ollama/blob/main/docs/faq.md#how-do-i-configure-ollama-server).
+
+### OpenAI
+1. Select `OpenAI` in `Provider type`
+2. Set `Provider URL` to `https://api.openai.com/v1`
+3. Retrieve and paste your `API key` from the [API keys page](https://platform.openai.com/api-keys)
+4. Click refresh button and select the model that suits your needs (e.g. `gpt-4o`)
+
+### OpenAI compatible server
+There are several options to run local OpenAI-like server:
+- [Open WebUI](https://docs.openwebui.com/tutorials/integrations/continue-dev/)
+- [llama.cpp](https://github.com/ggerganov/llama.cpp)
+- [llama-cpp-python](https://github.com/abetlen/llama-cpp-python#openai-compatible-web-server)
+- [LocalAI](https://localai.io/model-compatibility/llama-cpp/#setup)
+- Obabooga [Text generation web UI](https://github.com/pfrankov/obsidian-local-gpt/discussions/8)
+- [LM Studio](https://lmstudio.ai/)
+- ...maybe more
 
 ## For plugin developers
 [Docs: How to integrate AI Providers in your plugin.](./packages/sdk/README.md)
