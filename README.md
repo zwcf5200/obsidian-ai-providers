@@ -10,7 +10,7 @@ Think of it like a control panel where you can:
 
 **The plugin itself doesn't do any AI processing - it just helps other plugins connect to AI services more easily.**
 
-<img width="625" alt="image" src="https://github.com/user-attachments/assets/6ff8bd35-724c-4f1e-b52a-a9419fbba7b4" />
+<img width="700" alt="image" src="https://github.com/user-attachments/assets/09b6313d-726c-440b-9201-1b2f2e839fa7" />
 
 ## Required by plugins
 - [Local GPT](https://github.com/pfrankov/obsidian-local-gpt)
