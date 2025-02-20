@@ -335,6 +335,7 @@ declare global {
         empty(): void;
         createEl(tag: string, attrs?: { text?: string }, cls?: string): HTMLElement;
         createSpan(className?: string): HTMLElement;
+        addClass(className: string): void;
     }
 }
 
@@ -378,6 +379,11 @@ HTMLElement.prototype.createSpan = function(className?: string): HTMLElement {
     }
     this.appendChild(span);
     return span;
+};
+
+// Add addClass method to HTMLElement prototype
+HTMLElement.prototype.addClass = function(className: string): void {
+    this.classList.add(className);
 };
 
 export function sanitizeHTMLToDom(html: string): DocumentFragment {

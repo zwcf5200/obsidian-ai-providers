@@ -100,6 +100,23 @@ describe('ProviderFormModal', () => {
             expect(refreshButton.classList.contains('loading')).toBe(true);
         });
 
+        it('should update title when model changes', () => {
+            provider.availableModels = ['gpt-4', 'gpt-3.5-turbo'];
+            modal.onOpen();
+            
+            const dropdown = getElement<HTMLSelectElement>(modal.contentEl, '[data-testid="model-dropdown"]');
+            
+            // Check initial title
+            expect(dropdown.title).toBe('gpt-4');
+            
+            // Change model and check title update
+            dropdown.value = 'gpt-3.5-turbo';
+            dropdown.dispatchEvent(new Event('change'));
+            
+            expect(dropdown.title).toBe('gpt-3.5-turbo');
+            expect(provider.model).toBe('gpt-3.5-turbo');
+        });
+
         it('should successfully load and display models', async () => {
             const models = ['gpt-4', 'gpt-3.5-turbo'];
             jest.spyOn(plugin.aiProviders, 'fetchModels').mockResolvedValue(models);

@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import { copyFilesPlugin } from "./copy-files-plugin.mjs";
 
 const banner =
 `/*
@@ -15,7 +16,10 @@ const context = await esbuild.context({
 	banner: {
 		js: banner,
 	},
-	entryPoints: ["src/main.ts"],
+	entryPoints: [
+		"src/main.ts",
+		"src/styles.css"
+	],
 	bundle: true,
 	external: [
 		"obsidian",
@@ -37,14 +41,20 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "dist/main.js",
+	outdir: "dist",
 	minify: prod,
 	loader: {
-		".ts": "ts"
+		".ts": "ts",
+		".css": "css"
 	},
 	define: {
 		'process.env.NODE_ENV': prod ? '"production"' : '"development"'
-	}
+	},
+	plugins: [
+		copyFilesPlugin([
+			{ from: './manifest.json', to: './dist/manifest.json' }
+		])
+	]
 });
 
 if (prod) {

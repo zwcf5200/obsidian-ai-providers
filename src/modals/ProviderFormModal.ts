@@ -90,7 +90,13 @@ export class ProviderFormModal extends Modal {
                         dropdown.addOption('none', I18n.t('settings.noModelsAvailable'));
                         dropdown.setDisabled(true);
                     } else {
-                        models.forEach(model => dropdown.addOption(model, model));
+                        models.forEach(model => {
+                            dropdown.addOption(model, model);
+                            // Add title attribute to option elements
+                            const options = dropdown.selectEl.options;
+                            const lastOption = options[options.length - 1];
+                            lastOption.title = model;
+                        });
                         dropdown.setDisabled(false);
                     }
                 }
@@ -99,9 +105,13 @@ export class ProviderFormModal extends Modal {
                     .setValue(this.provider.model || "")
                     .onChange(value => {
                         this.provider.model = value;
+                        // Update title when selection changes
+                        dropdown.selectEl.title = value;
                     });
                 
                 dropdown.selectEl.setAttribute('data-testid', 'model-dropdown');
+                dropdown.selectEl.title = this.provider.model || "";
+                dropdown.selectEl.parentElement?.addClass('ai-providers-model-dropdown');
                 return dropdown;
             })
             .addButton(button => {

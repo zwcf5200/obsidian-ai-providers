@@ -48,3 +48,12 @@
     font-size: var(--font-smallest);
     line-height: var(--line-height-tight);
 }
+
+.ai-providers-model-dropdown {
+    max-width: 65%;
+}
+
+.ai-providers-model-dropdown select {
+    width: 100%;
+    text-overflow: ellipsis;
+}
