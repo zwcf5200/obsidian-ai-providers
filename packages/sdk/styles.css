@@ -8,7 +8,7 @@
     border-radius: var(--radius-m);
     background-color: var(--background-secondary);
 	color: var(--text-muted);
-    font-size: var(--font-smallest);
+    font-size: var(--font-small);
     line-height: var(--line-height-tight);
 }
 

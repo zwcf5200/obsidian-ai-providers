@@ -12,6 +12,9 @@ Think of it like a control panel where you can:
 
 <img width="625" alt="image" src="https://github.com/user-attachments/assets/6ff8bd35-724c-4f1e-b52a-a9419fbba7b4" />
 
+## Required by plugins
+- [Local GPT](https://github.com/pfrankov/obsidian-local-gpt)
+
 ## Supported providers
 - Ollama
 - OpenAI compatible API
@@ -23,11 +26,12 @@ Think of it like a control panel where you can:
 - Available in 4 languages: English, Chinese, German, and Russian (more languages coming soon)
 
 ## Installation
+### Obsidian plugin store (recommended)
+This plugin is available in the Obsidian community plugin store https://obsidian.md/plugins?id=ai-providers
+
 ### BRAT
 You can install this plugin via [BRAT](https://obsidian.md/plugins?id=obsidian42-brat): `pfrankov/obsidian-ai-providers`
 
-## Required by plugins
-- [Local GPT](https://github.com/pfrankov/obsidian-local-gpt) (soon)
 
 ## For plugin developers
 [Docs: How to integrate AI Providers in your plugin.](./packages/sdk/README.md)
