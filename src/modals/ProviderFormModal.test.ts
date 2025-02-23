@@ -255,4 +255,65 @@ describe('ProviderFormModal', () => {
             expect(provider.apiKey).toBe('new-api-key');
         });
     });
+
+    describe('Model Input Mode Switching', () => {
+        beforeEach(() => {
+            provider.availableModels = ['gpt-4', 'gpt-3.5-turbo'];
+            provider.model = 'gpt-4';
+            modal.onOpen();
+        });
+
+        const triggerModeSwitch = () => {
+            // Force isTextMode change since we can't rely on link click in tests
+            (modal as any).isTextMode = !(modal as any).isTextMode;
+            modal.display();
+        };
+
+        it('should switch from dropdown to text mode', () => {
+            // Initial state check
+            expect(() => getElement(modal.contentEl, '[data-testid="model-dropdown"]')).not.toThrow();
+            expect(() => getElement(modal.contentEl, '[data-testid="model-input"]')).toThrow();
+
+            // Switch mode
+            triggerModeSwitch();
+
+            // Check if switched to text mode
+            expect(() => getElement(modal.contentEl, '[data-testid="model-input"]')).not.toThrow();
+            expect(() => getElement(modal.contentEl, '[data-testid="model-dropdown"]')).toThrow();
+        });
+
+        it('should switch from text mode to dropdown mode', () => {
+            // Switch to text mode first
+            triggerModeSwitch();
+
+            // Verify text mode
+            expect(() => getElement(modal.contentEl, '[data-testid="model-input"]')).not.toThrow();
+
+            // Switch back to dropdown mode
+            triggerModeSwitch();
+
+            // Check if switched back to dropdown mode
+            expect(() => getElement(modal.contentEl, '[data-testid="model-dropdown"]')).not.toThrow();
+            expect(() => getElement(modal.contentEl, '[data-testid="model-input"]')).toThrow();
+        });
+
+        it('should preserve model value when switching modes', () => {
+            const testModel = 'gpt-4';
+            provider.model = testModel;
+
+            // Switch to text mode
+            triggerModeSwitch();
+
+            // Check if value preserved in text mode
+            const textInput = getElement<HTMLInputElement>(modal.contentEl, '[data-testid="model-input"]');
+            expect(textInput.value).toBe(testModel);
+
+            // Switch back to dropdown
+            triggerModeSwitch();
+
+            // Check if value preserved in dropdown
+            const dropdown = getElement<HTMLSelectElement>(modal.contentEl, '[data-testid="model-dropdown"]');
+            expect(dropdown.value).toBe(testModel);
+        });
+    });
 }); 

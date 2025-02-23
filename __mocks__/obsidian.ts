@@ -389,5 +389,7 @@ HTMLElement.prototype.addClass = function(className: string): void {
 export function sanitizeHTMLToDom(html: string): DocumentFragment {
     const template = document.createElement('template');
     template.innerHTML = html;
+    
+    // If we need to test mode switching, we'll do it through the isTextMode property directly
     return template.content;
 } 

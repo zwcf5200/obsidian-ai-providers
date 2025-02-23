@@ -1,4 +1,4 @@
-import { App, Modal, Setting, Notice } from 'obsidian';
+import { App, Modal, Setting, Notice, sanitizeHTMLToDom } from 'obsidian';
 import { I18n } from '../i18n';
 import { IAIProvider } from '@obsidian-ai-providers/sdk';
 import { logger } from '../utils/logger';
@@ -6,6 +6,7 @@ import AIProvidersPlugin from '../main';
 
 export class ProviderFormModal extends Modal {
     private isLoadingModels = false;
+    private isTextMode = false;
     private readonly defaultProvidersUrls = {
         openai: "https://api.openai.com/v1",
         ollama: "http://localhost:11434"
@@ -19,6 +20,108 @@ export class ProviderFormModal extends Modal {
         private isAddingNew = false
     ) {
         super(app);
+    }
+
+    private createModelSetting(contentEl: HTMLElement) {
+        const modelSetting = new Setting(contentEl)
+            .setName(I18n.t('settings.model'))
+            .setDesc(this.isTextMode ? I18n.t('settings.modelTextDesc') : I18n.t('settings.modelDesc'));
+
+        if (this.isTextMode) {
+            modelSetting.addText(text => {
+                text.setValue(this.provider.model || '')
+                    .onChange(value => {
+                        this.provider.model = value;
+                    });
+                text.inputEl.setAttribute('data-testid', 'model-input');
+                return text;
+            });
+        } else {
+            modelSetting.addDropdown(dropdown => {
+                if (this.isLoadingModels) {
+                    dropdown.addOption('loading', I18n.t('settings.loadingModels'));
+                    dropdown.setDisabled(true);
+                } else {
+                    const models = this.provider.availableModels;
+                    if (!models || models.length === 0) {
+                        dropdown.addOption('none', I18n.t('settings.noModelsAvailable'));
+                        dropdown.setDisabled(true);
+                    } else {
+                        models.forEach(model => {
+                            dropdown.addOption(model, model);
+                            const options = dropdown.selectEl.options;
+                            const lastOption = options[options.length - 1];
+                            lastOption.title = model;
+                        });
+                        dropdown.setDisabled(false);
+                    }
+                }
+
+                dropdown
+                    .setValue(this.provider.model || "")
+                    .onChange(value => {
+                        this.provider.model = value;
+                        dropdown.selectEl.title = value;
+                    });
+                
+                dropdown.selectEl.setAttribute('data-testid', 'model-dropdown');
+                dropdown.selectEl.title = this.provider.model || "";
+                dropdown.selectEl.parentElement?.addClass('ai-providers-model-dropdown');
+                return dropdown;
+            });
+
+            if (!this.isTextMode) {
+                modelSetting.addButton(button => {
+                    button
+                        .setIcon("refresh-cw")
+                        .setTooltip(I18n.t('settings.refreshModelsList'));
+                    
+                    button.buttonEl.setAttribute('data-testid', 'refresh-models-button');
+                    
+                    if (this.isLoadingModels) {
+                        button.setDisabled(true);
+                        button.buttonEl.addClass('loading');
+                    }
+                    
+                    button.onClick(async () => {
+                        try {
+                            this.isLoadingModels = true;
+                            this.display();
+                            
+                            const models = await this.plugin.aiProviders.fetchModels(this.provider);
+                            this.provider.availableModels = models;
+                            if (models.length > 0) {
+                                this.provider.model = models[0] || "";
+                            }
+                            
+                            new Notice(I18n.t('settings.modelsUpdated'));
+                        } catch (error) {
+                            logger.error('Failed to fetch models:', error);
+                            new Notice(I18n.t('errors.failedToFetchModels'));
+                        } finally {
+                            this.isLoadingModels = false;
+                            this.display();
+                        }
+                    });
+                });
+            }
+        }
+
+        const descEl = modelSetting.descEl;
+        descEl.empty();
+        descEl.appendChild(sanitizeHTMLToDom(this.isTextMode ? I18n.t('settings.modelTextDesc') : I18n.t('settings.modelDesc')));
+        
+        // Add click handler for the link
+        const link = descEl.querySelector('a');
+        if (link) {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.isTextMode = !this.isTextMode;
+                this.display();
+            });
+        }
+
+        return modelSetting;
     }
 
     onOpen() {
@@ -77,76 +180,7 @@ export class ProviderFormModal extends Modal {
                 .setValue(this.provider.apiKey || '')
                 .onChange(value => this.provider.apiKey = value));
 
-        new Setting(contentEl)
-            .setName(I18n.t('settings.model'))
-            .setDesc(I18n.t('settings.modelDesc'))
-            .addDropdown(dropdown => {
-                if (this.isLoadingModels) {
-                    dropdown.addOption('loading', I18n.t('settings.loadingModels'));
-                    dropdown.setDisabled(true);
-                } else {
-                    const models = this.provider.availableModels;
-                    if (!models || models.length === 0) {
-                        dropdown.addOption('none', I18n.t('settings.noModelsAvailable'));
-                        dropdown.setDisabled(true);
-                    } else {
-                        models.forEach(model => {
-                            dropdown.addOption(model, model);
-                            // Add title attribute to option elements
-                            const options = dropdown.selectEl.options;
-                            const lastOption = options[options.length - 1];
-                            lastOption.title = model;
-                        });
-                        dropdown.setDisabled(false);
-                    }
-                }
-
-                dropdown
-                    .setValue(this.provider.model || "")
-                    .onChange(value => {
-                        this.provider.model = value;
-                        // Update title when selection changes
-                        dropdown.selectEl.title = value;
-                    });
-                
-                dropdown.selectEl.setAttribute('data-testid', 'model-dropdown');
-                dropdown.selectEl.title = this.provider.model || "";
-                dropdown.selectEl.parentElement?.addClass('ai-providers-model-dropdown');
-                return dropdown;
-            })
-            .addButton(button => {
-                button
-                    .setIcon("refresh-cw")
-                    .setTooltip(I18n.t('settings.refreshModelsList'));
-                
-                button.buttonEl.setAttribute('data-testid', 'refresh-models-button');
-                
-                if (this.isLoadingModels) {
-                    button.setDisabled(true);
-                    button.buttonEl.addClass('loading');
-                }
-                
-                button.onClick(async () => {
-                    try {
-                        this.isLoadingModels = true;
-                        this.display();
-                        
-                        const models = await this.plugin.aiProviders.fetchModels(this.provider);
-                        this.provider.availableModels = models;
-                        if (models.length > 0) {
-                            this.provider.model = models[0] || "";
-                        }
-                        
-                        new Notice(I18n.t('settings.modelsUpdated'));
-                    } catch (error) {
-                        logger.error('Failed to fetch models:', error);
-                        new Notice(I18n.t('errors.failedToFetchModels'));
-                    } finally {
-                        this.isLoadingModels = false;
-                        this.display();
-                    }
-                });
-            });
+        this.createModelSetting(contentEl);
 
         new Setting(contentEl)
             .addButton(button => button
