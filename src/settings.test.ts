@@ -85,7 +85,8 @@ jest.mock('./AIProvidersService', () => {
             version: 1,
             handlers: {
                 openai: new OpenAIHandler(settings),
-                ollama: new OllamaHandler(settings)
+                ollama: new OllamaHandler(settings),
+                gemini: new OpenAIHandler(settings)
             },
             embed: jest.fn().mockImplementation(async (params) => {
                 if (params.provider.apiKey === 'error') {
@@ -286,6 +287,44 @@ describe('AIProvidersSettingTab', () => {
             expect(plugin.settings.providers.length).toBe(2);
             expect(plugin.settings.providers[1].name).toContain('Duplicate');
             expect(plugin.saveSettings).toHaveBeenCalled();
+        });
+
+        it('should validate provider types correctly', async () => {
+            const validTypes = ['openai', 'ollama', 'gemini', 'openrouter', 'lmstudio'];
+            const invalidType = 'invalid-type';
+            
+            for (const type of validTypes) {
+                const provider = createTestProvider({ type: type as any });
+                const result = await settingTab.saveProvider(provider);
+                expect(plugin.saveSettings).toHaveBeenCalled();
+                expect(plugin.settings.providers).toContainEqual(provider);
+            }
+            
+            const invalidProvider = createTestProvider({ type: invalidType as any });
+            await settingTab.saveProvider(invalidProvider);
+            expect(plugin.settings.providers).not.toContainEqual(invalidProvider);
+        });
+
+        it('should validate provider URLs correctly', async () => {
+            const validUrls = {
+                openai: 'https://api.openai.com/v1',
+                ollama: 'http://localhost:11434',
+                gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
+                openrouter: 'https://openrouter.ai/api/v1',
+                lmstudio: 'http://localhost:1234/v1'
+            };
+            
+            for (const [type, url] of Object.entries(validUrls)) {
+                const provider = createTestProvider({ type: type as any, url });
+                const result = await settingTab.saveProvider(provider);
+                expect(plugin.saveSettings).toHaveBeenCalled();
+                expect(plugin.settings.providers).toContainEqual(provider);
+            }
+            
+            // Test invalid URL
+            const invalidProvider = createTestProvider({ url: 'invalid-url' });
+            await settingTab.saveProvider(invalidProvider);
+            expect(plugin.settings.providers).not.toContainEqual(invalidProvider);
         });
     });
 

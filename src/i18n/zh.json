@@ -1,6 +1,6 @@
 {
   "settings": {
-    "notice": "此插件是 AI 提供商的配置中心。它本身不提供任何功能，但<a href=\"https://github.com/pfrankov/obsidian-ai-providers\">其他插件</a>可以使用它来避免重复配置 AI 设置。",
+    "notice": "此插件是 AI 提供商的配置中心。它本身不提供任何功能，但<a href=\"https://github.com/pfrankov/obsidian-ai-providers#required-by-plugins\">其他插件</a>可以使用它来避免重复配置 AI 设置。",
     "configuredProviders": "AI 服务提供商",
     "addNewProvider": "添加新的服务提供商",
     "addProvider": "添加提供商",

@@ -1,6 +1,6 @@
 {
   "settings": {
-    "notice": "This plugin is a configuration hub for AI providers. It doesn't do anything on its own, but <a href=\"https://github.com/pfrankov/obsidian-ai-providers\">other plugins</a> can use it to avoid configuring AI settings repeatedly.",
+    "notice": "This plugin is a configuration hub for AI providers. It doesn't do anything on its own, but <a href=\"https://github.com/pfrankov/obsidian-ai-providers#required-by-plugins\">other plugins</a> can use it to avoid configuring AI settings repeatedly.",
     "configuredProviders": "AI providers",
     "addNewProvider": "Add new provider",
     "addProvider": "Add provider",

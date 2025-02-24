@@ -4,12 +4,13 @@ export type ObsidianEvents = {
     'ai-providers-ready': () => void;
 };
 
+export type AIProviderType = 'openai' | 'ollama' | 'gemini' | 'openrouter' | 'lmstudio';
 export interface IAIProvider {
     id: string;
     name: string;
     apiKey?: string;
     url?: string;
-    type: 'openai' | 'ollama';
+    type: AIProviderType;
     model?: string;
     availableModels?: string[];
 }

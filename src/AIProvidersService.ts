@@ -1,10 +1,11 @@
 import { App, Notice } from 'obsidian';
-import { IAIProvider, IAIProvidersService, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIHandler } from '@obsidian-ai-providers/sdk';
+import { IAIProvider, IAIProvidersService, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIHandler, AIProviderType } from '@obsidian-ai-providers/sdk';
 import { OpenAIHandler } from './handlers/OpenAIHandler';
 import { OllamaHandler } from './handlers/OllamaHandler';
 import { I18n } from './i18n';
 import AIProvidersPlugin from './main';
 import { ConfirmationModal } from './modals/ConfirmationModal';
+
 export class AIProvidersService implements IAIProvidersService {
     providers: IAIProvider[] = [];
     version = 1;
@@ -18,11 +19,14 @@ export class AIProvidersService implements IAIProvidersService {
         this.app = app;
         this.handlers = {
             openai: new OpenAIHandler(plugin.settings),
-            ollama: new OllamaHandler(plugin.settings)
+            openrouter: new OpenAIHandler(plugin.settings),
+            ollama: new OllamaHandler(plugin.settings),
+            gemini: new OpenAIHandler(plugin.settings),
+            lmstudio: new OpenAIHandler(plugin.settings),
         };
     }
 
-    private getHandler(type: 'openai' | 'ollama') {
+    private getHandler(type: AIProviderType) {
         return this.handlers[type];
     }
 

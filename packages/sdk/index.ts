@@ -194,5 +194,6 @@ export type {
     IAIProvidersExecuteParams,
     IAIProvidersEmbedParams,
     IAIHandler,
-    IAIProvidersPluginSettings
+    IAIProvidersPluginSettings,
+    AIProviderType
 } from './types';

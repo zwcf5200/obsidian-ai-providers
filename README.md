@@ -18,7 +18,10 @@ Think of it like a control panel where you can:
 ## Supported providers
 - Ollama
 - OpenAI
-- OpenAI compatible API (OpenRouter)
+- OpenAI compatible API
+- OpenRouter
+- Google Gemini
+- LM Studio
 
 ## Features
 - Fully encapsulated API for working with AI providers
@@ -60,6 +63,23 @@ There are several options to run local OpenAI-like server:
 - [LM Studio](https://lmstudio.ai/)
 - ...maybe more
 
+### OpenRouter
+1. Select `OpenRouter` in `Provider type`
+2. Set `Provider URL` to `https://openrouter.ai/api/v1`
+3. Retrieve and paste your `API key` from the [API keys page](https://openrouter.ai/settings/keys)
+4. Click refresh button and select the model that suits your needs (e.g. `anthropic/claude-3.7-sonnet`)
+
+### Google Gemini
+1. Select `Google Gemini` in `Provider type`
+2. Set `Provider URL` to `https://generativelanguage.googleapis.com/v1beta/openai`
+3. Retrieve and paste your `API key` from the [API keys page](https://aistudio.google.com/apikey)
+4. Click refresh button and select the model that suits your needs (e.g. `gemini-1.5-flash`)
+
+### LM Studio
+1. Select `LM Studio` in `Provider type`
+2. Set `Provider URL` to `http://localhost:1234/v1`
+3. Click refresh button and select the model that suits your needs (e.g. `gemma2`)
+
 ## For plugin developers
 [Docs: How to integrate AI Providers in your plugin.](./packages/sdk/README.md)
 
@@ -67,7 +87,9 @@ There are several options to run local OpenAI-like server:
 - [x] Docs for devs
 - [x] Ollama context optimizations
 - [x] Image processing support
-- [ ] Gemini Provider support
+- [x] OpenRouter Provider support
+- [x] Gemini Provider support
+- [x] LM Studio Provider support
 - [ ] Anthropic Provider support
 - [ ] Groq Provider support
 - [ ] Shared embeddings to avoid re-embedding the same documents multiple times

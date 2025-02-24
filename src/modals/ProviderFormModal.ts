@@ -1,6 +1,6 @@
 import { App, Modal, Setting, Notice, sanitizeHTMLToDom } from 'obsidian';
 import { I18n } from '../i18n';
-import { IAIProvider } from '@obsidian-ai-providers/sdk';
+import { IAIProvider, AIProviderType } from '@obsidian-ai-providers/sdk';
 import { logger } from '../utils/logger';
 import AIProvidersPlugin from '../main';
 
@@ -9,7 +9,10 @@ export class ProviderFormModal extends Modal {
     private isTextMode = false;
     private readonly defaultProvidersUrls = {
         openai: "https://api.openai.com/v1",
-        ollama: "http://localhost:11434"
+        ollama: "http://localhost:11434",
+        gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
+        openrouter: "https://openrouter.ai/api/v1",
+        lmstudio: "http://localhost:1234/v1",
     };
 
     constructor(
@@ -141,12 +144,15 @@ export class ProviderFormModal extends Modal {
                 dropdown
                     .addOptions({
                         "openai": "OpenAI",
-                        "ollama": "Ollama"
+                        "ollama": "Ollama",
+                        "openrouter": "OpenRouter",
+                        "gemini": "Google Gemini",
+                        "lmstudio": "LM Studio"
                     })
                     .setValue(this.provider.type)
                     .onChange(value => {
-                        this.provider.type = value as 'openai' | 'ollama';
-                        this.provider.url = this.defaultProvidersUrls[value as 'openai' | 'ollama'];
+                        this.provider.type = value as AIProviderType;
+                        this.provider.url = this.defaultProvidersUrls[value as AIProviderType];
                         this.provider.availableModels = undefined;
                         this.provider.model = undefined;
                         this.display();

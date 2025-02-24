@@ -206,6 +206,49 @@ describe('ProviderFormModal', () => {
             dropdown.value = 'ollama';
             dropdown.dispatchEvent(new Event('change'));
             expect(provider.url).toBe('http://localhost:11434');
+
+            // Test Gemini
+            dropdown.value = 'gemini';
+            dropdown.dispatchEvent(new Event('change'));
+            expect(provider.url).toBe('https://generativelanguage.googleapis.com/v1beta/openai');
+
+            // Test OpenRouter
+            dropdown.value = 'openrouter';
+            dropdown.dispatchEvent(new Event('change'));
+            expect(provider.url).toBe('https://openrouter.ai/api/v1');
+
+            // Test LM Studio
+            dropdown.value = 'lmstudio';
+            dropdown.dispatchEvent(new Event('change'));
+            expect(provider.url).toBe('http://localhost:1234/v1');
+        });
+
+        it('should reset model and availableModels when changing provider type', () => {
+            modal.onOpen();
+            
+            // Set initial values
+            provider.model = 'test-model';
+            provider.availableModels = ['model1', 'model2'];
+            
+            const dropdown = getElement<HTMLSelectElement>(modal.contentEl, '[data-testid="provider-type-dropdown"]');
+            
+            // Test with Gemini
+            dropdown.value = 'gemini';
+            dropdown.dispatchEvent(new Event('change'));
+            expect(provider.model).toBeUndefined();
+            expect(provider.availableModels).toBeUndefined();
+            
+            // Test with OpenRouter
+            dropdown.value = 'openrouter';
+            dropdown.dispatchEvent(new Event('change'));
+            expect(provider.model).toBeUndefined();
+            expect(provider.availableModels).toBeUndefined();
+            
+            // Test with LM Studio
+            dropdown.value = 'lmstudio';
+            dropdown.dispatchEvent(new Event('change'));
+            expect(provider.model).toBeUndefined();
+            expect(provider.availableModels).toBeUndefined();
         });
     });
 

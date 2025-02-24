@@ -1,6 +1,6 @@
 {
   "settings": {
-    "notice": "Dieses Plugin ist eine Konfigurationszentrale für KI-Anbieter. Es macht selbst nichts, aber <a href=\"https://github.com/pfrankov/obsidian-ai-providers\">andere Plugins</a> können es nutzen, um KI-Einstellungen nicht mehrfach konfigurieren zu müssen.",
+    "notice": "Dieses Plugin ist eine Konfigurationszentrale für KI-Anbieter. Es macht selbst nichts, aber <a href=\"https://github.com/pfrankov/obsidian-ai-providers#required-by-plugins\">andere Plugins</a> können es nutzen, um KI-Einstellungen nicht mehrfach konfigurieren zu müssen.",
     "configuredProviders": "KI-anbieter",
     "addNewProvider": "Neuen anbieter hinzufügen",
     "addProvider": "Anbieter hinzufügen",

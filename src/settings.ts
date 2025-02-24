@@ -64,7 +64,7 @@ export class AIProvidersSettingTab extends PluginSettingTab {
         }
 
         // Validate provider type
-        if (!['openai', 'ollama'].includes(provider.type)) {
+        if (!['openai', 'ollama', 'gemini', 'openrouter', 'lmstudio'].includes(provider.type)) {
             return false;
         }
 

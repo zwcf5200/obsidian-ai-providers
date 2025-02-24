@@ -57,3 +57,15 @@
     width: 100%;
     text-overflow: ellipsis;
 }
+
+.ai-providers-main-interface .setting-item {
+    overflow: hidden;
+}
+
+.ai-providers-main-interface .setting-item-info {
+    overflow: hidden;
+}
+
+.ai-providers-main-interface .setting-item-description {
+    max-width: 100%;
+}
