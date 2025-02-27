@@ -13,6 +13,7 @@ export class ProviderFormModal extends Modal {
         gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
         openrouter: "https://openrouter.ai/api/v1",
         lmstudio: "http://localhost:1234/v1",
+        groq: "https://api.groq.com/openai/v1",
     };
 
     constructor(
@@ -147,7 +148,8 @@ export class ProviderFormModal extends Modal {
                         "ollama": "Ollama",
                         "openrouter": "OpenRouter",
                         "gemini": "Google Gemini",
-                        "lmstudio": "LM Studio"
+                        "lmstudio": "LM Studio",
+                        "groq": "Groq"
                     })
                     .setValue(this.provider.type)
                     .onChange(value => {

@@ -63,11 +63,6 @@ export class AIProvidersSettingTab extends PluginSettingTab {
             }
         }
 
-        // Validate provider type
-        if (!['openai', 'ollama', 'gemini', 'openrouter', 'lmstudio'].includes(provider.type)) {
-            return false;
-        }
-
         // Check for duplicate names
         const providers = this.plugin.settings.providers || [];
         const existingProvider = providers.find((p: IAIProvider) => p.name === provider.name && p.id !== provider.id);

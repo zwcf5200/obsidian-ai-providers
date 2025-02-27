@@ -3,7 +3,7 @@ import { IAIProvidersPluginSettings } from '@obsidian-ai-providers/sdk';
 import { DEFAULT_SETTINGS, AIProvidersSettingTab } from './settings';
 import { AIProvidersService } from './AIProvidersService';
 import { logger } from './utils/logger';
-import { openAIIcon, ollamaIcon, geminiIcon, openRouterIcon, lmstudioIcon } from './utils/icons';
+import { openAIIcon, ollamaIcon, geminiIcon, openRouterIcon, lmstudioIcon, groqIcon } from './utils/icons';
 
 export default class AIProvidersPlugin extends Plugin {
 	settings: IAIProvidersPluginSettings;
@@ -16,6 +16,7 @@ export default class AIProvidersPlugin extends Plugin {
 		addIcon('ai-providers-gemini', geminiIcon);
 		addIcon('ai-providers-openrouter', openRouterIcon);
 		addIcon('ai-providers-lmstudio', lmstudioIcon);
+		addIcon('ai-providers-groq', groqIcon);
 		
 		const settingTab = new AIProvidersSettingTab(this.app, this);
 		this.exposeAIProviders();

@@ -23,6 +23,7 @@ export class AIProvidersService implements IAIProvidersService {
             ollama: new OllamaHandler(plugin.settings),
             gemini: new OpenAIHandler(plugin.settings),
             lmstudio: new OpenAIHandler(plugin.settings),
+            groq: new OpenAIHandler(plugin.settings),
         };
     }
 

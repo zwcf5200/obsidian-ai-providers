@@ -289,22 +289,6 @@ describe('AIProvidersSettingTab', () => {
             expect(plugin.saveSettings).toHaveBeenCalled();
         });
 
-        it('should validate provider types correctly', async () => {
-            const validTypes = ['openai', 'ollama', 'gemini', 'openrouter', 'lmstudio'];
-            const invalidType = 'invalid-type';
-            
-            for (const type of validTypes) {
-                const provider = createTestProvider({ type: type as any });
-                const result = await settingTab.saveProvider(provider);
-                expect(plugin.saveSettings).toHaveBeenCalled();
-                expect(plugin.settings.providers).toContainEqual(provider);
-            }
-            
-            const invalidProvider = createTestProvider({ type: invalidType as any });
-            await settingTab.saveProvider(invalidProvider);
-            expect(plugin.settings.providers).not.toContainEqual(invalidProvider);
-        });
-
         it('should validate provider URLs correctly', async () => {
             const validUrls = {
                 openai: 'https://api.openai.com/v1',

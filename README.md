@@ -22,6 +22,7 @@ Think of it like a control panel where you can:
 - OpenRouter
 - Google Gemini
 - LM Studio
+- Groq
 
 ## Features
 - Fully encapsulated API for working with AI providers
@@ -80,6 +81,12 @@ There are several options to run local OpenAI-like server:
 2. Set `Provider URL` to `http://localhost:1234/v1`
 3. Click refresh button and select the model that suits your needs (e.g. `gemma2`)
 
+### Groq
+1. Select `Groq` in `Provider type`
+2. Set `Provider URL` to `https://api.groq.com/openai/v1`
+3. Retrieve and paste your `API key` from the [API keys page](https://groq.com/docs/api-reference/introduction)
+4. Click refresh button and select the model that suits your needs (e.g. `llama3-70b-8192`)
+
 ## For plugin developers
 [Docs: How to integrate AI Providers in your plugin.](./packages/sdk/README.md)
 
@@ -90,8 +97,8 @@ There are several options to run local OpenAI-like server:
 - [x] OpenRouter Provider support
 - [x] Gemini Provider support
 - [x] LM Studio Provider support
+- [x] Groq Provider support
 - [ ] Anthropic Provider support
-- [ ] Groq Provider support
 - [ ] Shared embeddings to avoid re-embedding the same documents multiple times
 - [ ] Spanish, Italian, French, Dutch, Portuguese, Japanese, Korean translations
 - [ ] Incapsulated basic RAG search with optional BM25 search
