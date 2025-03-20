@@ -61,7 +61,7 @@ export class AIProvidersService implements IAIProvidersService {
         }
     }
 
-    async migrateProvider(provider: IAIProvider) {
+    async migrateProvider(provider: IAIProvider): Promise<IAIProvider | false> {
         const fieldsToCompare = ['type', 'apiKey', 'url', 'model'] as const;
         this.plugin.settings.providers = this.plugin.settings.providers || [];
         
@@ -70,7 +70,7 @@ export class AIProvidersService implements IAIProvidersService {
             return Promise.resolve(existingProvider);
         }
 
-        return new Promise((resolve) => {
+        return new Promise<IAIProvider | false>((resolve) => {
             new ConfirmationModal(
                 this.app,
                 `Migrate provider ${provider.name}?`,
@@ -80,6 +80,7 @@ export class AIProvidersService implements IAIProvidersService {
                     resolve(provider);
                 },
                 () => {
+                    // When canceled, return false to indicate the migration was not performed
                     resolve(false);
                 }
             ).open();

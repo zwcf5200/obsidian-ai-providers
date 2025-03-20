@@ -29,7 +29,7 @@ export interface IAIProvidersService {
     embed: (params: IAIProvidersEmbedParams) => Promise<number[][]>;
     execute: (params: IAIProvidersExecuteParams) => Promise<IChunkHandler>;
     checkCompatibility: (requiredVersion: number) => void;
-    migrateProvider: (provider: IAIProvider) => Promise<IAIProvider>;
+    migrateProvider: (provider: IAIProvider) => Promise<IAIProvider | false>;
 }
 
 export interface IContentBlockText {

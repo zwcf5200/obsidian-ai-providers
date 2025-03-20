@@ -79,11 +79,11 @@ Alternatively you can use the content of `@obsidian-ai-providers/sdk/style.css` 
 
 ### 4. Migrate existing provider
 If you want to add providers to the AI Providers plugin, you can use the `migrateProvider` method.
-It will show a confirmation modal and if the user confirms, it will add the provider to the plugin settings.
+It will show a confirmation dialog and if the user confirms, it will add the provider to the plugin settings.
 
 ```typescript
 // The migrateProvider method takes an IAIProvider object and returns a promise
-// that resolves to the migrated (or existing matching) provider
+// that resolves to the migrated (or existing matching) provider, or false if migration was canceled
 const migratedOrExistingProvider = await aiProviders.migrateProvider({
     id: "any-unique-string",
     name: "Ollama local",
@@ -95,6 +95,15 @@ const migratedOrExistingProvider = await aiProviders.migrateProvider({
 
 // If a provider with matching `type`, `apiKey`, `url`, and `model` fields already exists,
 // it will return that existing provider instead of creating a duplicate
+// If the user cancels the migration, it will return false
+
+if (migratedOrExistingProvider === false) {
+    // Migration was canceled by the user
+    console.log("User canceled the migration");
+} else {
+    // Provider was added or already existed
+    console.log("Provider available:", migratedOrExistingProvider);
+}
 ```
 
 ### Execute prompt
