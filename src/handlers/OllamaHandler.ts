@@ -4,9 +4,11 @@ import { electronFetch } from '../utils/electronFetch';
 import { obsidianFetch } from '../utils/obsidianFetch';
 import { logger } from '../utils/logger';
 
-// Extend GenerateResponse type
-interface ExtendedGenerateResponse {
-    response?: string;
+// Extend ChatResponse type
+interface ExtendedChatResponse {
+    message?: {
+        content?: string;
+    }
     total_tokens?: number;
 }
 
@@ -137,15 +139,23 @@ export class OllamaHandler implements IAIHandler {
             this.settings.useNativeFetch ? fetch : obsidianFetch
         );
         
+        // Support for both input and text (for backward compatibility)
+        // Using type assertion to bypass type checking
+        const inputText = params.input ?? (params as any).text;
+        
+        if (!inputText) {
+            throw new Error('Either input or text parameter must be provided');
+        }
+        
         const modelInfo = await this.getCachedModelInfo(
             params.provider,
             params.provider.model || ""
         );
         logger.debug('Retrieved model info:', modelInfo);
 
-        const maxInputLength = Array.isArray(params.input) 
-            ? Math.max(...params.input.map(text => text.length))
-            : params.input.length;
+        const maxInputLength = Array.isArray(inputText) 
+            ? Math.max(...inputText.map(text => text.length))
+            : inputText.length;
         
         logger.debug('Max input length:', maxInputLength);
 
@@ -171,7 +181,7 @@ export class OllamaHandler implements IAIHandler {
             logger.debug('Sending embed request to Ollama');
             const response = await ollama.embed({
                 model: params.provider.model || "",
-                input: params.input,
+                input: inputText,
                 options: { num_ctx }
             });
 
@@ -194,8 +204,9 @@ export class OllamaHandler implements IAIHandler {
     async execute(params: IAIProvidersExecuteParams): Promise<IChunkHandler> {
         logger.debug('Starting execute process with params:', {
             model: params.provider.model,
-            promptLength: params.prompt.length,
-            systemPromptLength: params.systemPrompt?.length,
+            messagesCount: params.messages?.length || 0,
+            promptLength: params.prompt?.length || 0,
+            systemPromptLength: params.systemPrompt?.length || 0,
             hasImages: !!params.images?.length
         });
 
@@ -207,7 +218,7 @@ export class OllamaHandler implements IAIHandler {
             })
         );
         let isAborted = false;
-        let response: AsyncIterable<ExtendedGenerateResponse> | null = null;
+        let response: AsyncIterable<ExtendedChatResponse> | null = null;
         
         const handlers = {
             data: [] as ((chunk: string, accumulatedText: string) => void)[],
@@ -221,9 +232,6 @@ export class OllamaHandler implements IAIHandler {
             let fullText = '';
 
             try {
-                const images = params.images?.map((image) => image.replace(/^data:image\/(.*?);base64,/, ""));
-                logger.debug('Processing request with images:', { imageCount: images?.length });
-
                 const modelInfo = await this.getCachedModelInfo(
                     params.provider,
                     params.provider.model || ""
@@ -234,17 +242,76 @@ export class OllamaHandler implements IAIHandler {
                 
                 logger.debug('Retrieved model info:', modelInfo);
 
-                const requestBody: Record<string, any> = {
-                    model: params.provider.model || "",
-                    system: params.systemPrompt,
-                    prompt: params.prompt,
-                    images,
-                    stream: true,
-                    options: {}
-                };
+                // Prepare messages in a standardized format
+                const chatMessages: { role: string; content: string; images?: string[] }[] = [];
+                const extractedImages: string[] = [];
+                
+                if ('messages' in params && params.messages) {
+                    // Process messages with standardized handling for text and images
+                    params.messages.forEach(msg => {
+                        if (typeof msg.content === 'string') {
+                            // Simple text content
+                            chatMessages.push({
+                                role: msg.role,
+                                content: msg.content
+                            });
+                        } else {
+                            // Extract text content from content blocks
+                            const textContent = msg.content
+                                .filter(block => block.type === 'text')
+                                .map(block => block.type === 'text' ? block.text : '')
+                                .join('\n');
+                            
+                            // Extract image URLs from content blocks
+                            msg.content
+                                .filter(block => block.type === 'image_url')
+                                .forEach(block => {
+                                    if (block.type === 'image_url' && block.image_url?.url) {
+                                        extractedImages.push(block.image_url.url);
+                                    }
+                                });
+                            
+                            chatMessages.push({
+                                role: msg.role,
+                                content: textContent
+                            });
+                        }
 
-                if (!images?.length) {
-                    const inputLength = (params.systemPrompt?.length || 0) + params.prompt.length;
+                        // Add any images from the images property
+                        if (msg.images?.length) {
+                            extractedImages.push(...msg.images);
+                        }
+                    });
+                } else if ('prompt' in params) {
+                    // Handle legacy prompt-based API
+                    if (params.systemPrompt) {
+                        chatMessages.push({ role: 'system', content: params.systemPrompt });
+                    }
+                    
+                    chatMessages.push({ role: 'user', content: params.prompt });
+                    
+                    // Add any images from params
+                    if (params.images?.length) {
+                        extractedImages.push(...params.images);
+                    }
+                } else {
+                    throw new Error('Either messages or prompt must be provided');
+                }
+
+                // Process images for Ollama format (remove data URL prefix)
+                const processedImages = extractedImages.length > 0 
+                    ? extractedImages.map(image => image.replace(/^data:image\/(.*?);base64,/, ""))
+                    : undefined;
+
+                logger.debug('Processing request with images:', { imageCount: processedImages?.length || 0 });
+
+                // Prepare request options
+                const requestOptions: Record<string, any> = {};
+                
+                // Optimize context for text-based conversations
+                if (!processedImages?.length) {
+                    const inputLength = chatMessages.reduce((acc, msg) => acc + msg.content.length, 0);
+                    
                     logger.debug('Calculating context for text input:', { inputLength });
 
                     const { num_ctx, shouldUpdate } = this.optimizeContext(
@@ -254,7 +321,10 @@ export class OllamaHandler implements IAIHandler {
                         modelInfo?.contextLength || DEFAULT_CONTEXT_LENGTH
                     );
 
-                    requestBody.options.num_ctx = num_ctx;
+                    if (num_ctx) {
+                        requestOptions.num_ctx = num_ctx;
+                    }
+                    
                     logger.debug('Optimized context:', { num_ctx, shouldUpdate });
 
                     if (shouldUpdate) {
@@ -267,15 +337,59 @@ export class OllamaHandler implements IAIHandler {
                     }
                 }
 
-                logger.debug('Sending generate request to Ollama');
-                response = await ollama.generate(requestBody as any);
+                // Add any additional options from params
+                if (params.options) {
+                    Object.assign(requestOptions, params.options);
+                }
+
+                // Add images to the last user message if present
+                if (processedImages?.length) {
+                    // Find the last user message in the chat
+                    const lastUserMessageIndex = chatMessages.map(msg => msg.role).lastIndexOf('user');
+                    
+                    if (lastUserMessageIndex !== -1) {
+                        // Add images to the last user message
+                        chatMessages[lastUserMessageIndex] = {
+                            ...chatMessages[lastUserMessageIndex],
+                            images: processedImages
+                        };
+                        logger.debug('Added images to last user message at index:', lastUserMessageIndex);
+                    } else if (chatMessages.length > 0) {
+                        // If no user message, add to the last message regardless of role
+                        chatMessages[chatMessages.length - 1] = {
+                            ...chatMessages[chatMessages.length - 1],
+                            images: processedImages
+                        };
+                        logger.debug('Added images to last message (non-user)');
+                    } else {
+                        // If no messages at all, create a user message with empty content
+                        chatMessages.push({
+                            role: 'user',
+                            content: '',
+                            images: processedImages
+                        });
+                        logger.debug('Created new user message with images');
+                    }
+                }
+
+                logger.debug('Sending chat request to Ollama');
+                
+                // Using Ollama chat API instead of generate
+                response = await ollama.chat({
+                    model: params.provider.model || "",
+                    messages: chatMessages,
+                    stream: true,
+                    options: Object.keys(requestOptions).length > 0 ? requestOptions : undefined
+                } as any); // Type assertion for compatibility
 
                 for await (const part of response) {
                     if (isAborted) {
                         logger.debug('Generation aborted');
                         break;
                     }
-                    const responseText = part.response || '';
+                    
+                    // Extract content from message for chat API
+                    const responseText = part.message?.content || '';
                     if (responseText) {
                         fullText += responseText;
                         handlers.data.forEach(handler => handler(responseText, fullText));

@@ -98,6 +98,7 @@ There are several options to run local OpenAI-like server:
 - [x] Gemini Provider support
 - [x] LM Studio Provider support
 - [x] Groq Provider support
+- [x] Passing messages instead of one prompt
 - [ ] Anthropic Provider support
 - [ ] Shared embeddings to avoid re-embedding the same documents multiple times
 - [ ] Spanish, Italian, French, Dutch, Portuguese, Japanese, Korean translations
@@ -105,4 +106,4 @@ There are several options to run local OpenAI-like server:
 
 ## My other Obsidian plugins
 - [Local GPT](https://github.com/pfrankov/obsidian-local-gpt) that assists with local AI for maximum privacy and offline access.
-- [Colored Tags](https://github.com/pfrankov/obsidian-colored-tags) that colorizes tags in distinguishable colors. 
+- [Colored Tags](https://github.com/pfrankov/obsidian-colored-tags) that colorizes tags in distinguishable colors.

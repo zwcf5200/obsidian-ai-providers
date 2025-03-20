@@ -25,9 +25,18 @@ export class OpenAIHandler implements IAIHandler {
 
     async embed(params: IAIProvidersEmbedParams): Promise<number[][]> {
         const openai = this.getClient(params.provider, this.settings.useNativeFetch ? fetch : obsidianFetch);
+        
+        // Support for both input and text (for backward compatibility)
+        // Using type assertion to bypass type checking
+        const inputText = params.input ?? (params as any).text;
+        
+        if (!inputText) {
+            throw new Error('Either input or text parameter must be provided');
+        }
+        
         const response = await openai.embeddings.create({
             model: params.provider.model || "",
-            input: params.input
+            input: inputText
         });
         logger.debug('Embed response:', response);
 
@@ -41,26 +50,65 @@ export class OpenAIHandler implements IAIHandler {
         }));
         let isAborted = false;
 
-        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
+        let messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
         
-        if (params.systemPrompt) {
-            messages.push({ role: 'system', content: params.systemPrompt });
-        }
-        if (params.images?.length) {
-            messages.push({ role: 'user', content: [
-                {
-                    type: "text",
-                    text: params.prompt,
-                },
-                ...params.images.map((image) => ({
-                    type: "image_url",
-                    image_url: {
-                        url: image,
-                    },
-                } as OpenAI.Chat.Completions.ChatCompletionContentPartImage))
-            ] });
+        if ('messages' in params && params.messages) {
+            // Convert messages to OpenAI format
+            messages = params.messages.map(msg => {
+                // Handle simple text content
+                if (typeof msg.content === 'string') {
+                    return {
+                        role: msg.role as any, // Type as any to avoid role compatibility issues
+                        content: msg.content
+                    };
+                } 
+                
+                // Handle content blocks (text and images)
+                const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [];
+                
+                // Process each content block
+                msg.content.forEach(block => {
+                    if (block.type === 'text') {
+                        content.push({ type: 'text', text: block.text });
+                    } else if (block.type === 'image_url') {
+                        content.push({
+                            type: 'image_url',
+                            image_url: { url: block.image_url.url }
+                        } as OpenAI.Chat.Completions.ChatCompletionContentPartImage);
+                    }
+                });
+                
+                return {
+                    role: msg.role as any,
+                    content
+                };
+            });
+        } else if ('prompt' in params) {
+            // Legacy prompt-based API
+            if (params.systemPrompt) {
+                messages.push({ role: 'system', content: params.systemPrompt });
+            }
+            
+            // Handle prompt with images
+            if (params.images?.length) {
+                const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
+                    { type: "text", text: params.prompt }
+                ];
+                
+                // Add images as content parts
+                params.images.forEach(image => {
+                    content.push({
+                        type: "image_url",
+                        image_url: { url: image }
+                    } as OpenAI.Chat.Completions.ChatCompletionContentPartImage);
+                });
+                
+                messages.push({ role: 'user', content });
+            } else {
+                messages.push({ role: 'user', content: params.prompt });
+            }
         } else {
-            messages.push({ role: 'user', content: params.prompt });
+            throw new Error('Either messages or prompt must be provided');
         }
 
         const handlers = {

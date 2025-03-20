@@ -82,7 +82,8 @@ If you want to add providers to the AI Providers plugin, you can use the `migrat
 It will show a confirmation modal and if the user confirms, it will add the provider to the plugin settings.
 
 ```typescript
-// If a provider with matching `type`, `apiKey`, `url`, and `model` fields already exists, it will return that existing provider
+// The migrateProvider method takes an IAIProvider object and returns a promise
+// that resolves to the migrated (or existing matching) provider
 const migratedOrExistingProvider = await aiProviders.migrateProvider({
     id: "any-unique-string",
     name: "Ollama local",
@@ -91,15 +92,50 @@ const migratedOrExistingProvider = await aiProviders.migrateProvider({
     apiKey: "sk-1234567890",
     model: "smollm2:135m",
 });
+
+// If a provider with matching `type`, `apiKey`, `url`, and `model` fields already exists,
+// it will return that existing provider instead of creating a duplicate
 ```
 
 ### Execute prompt
 You can use just the list of providers and selected models but you can also make requests to AI Providers using `execute` method.
 
 ```typescript
+// Simple prompt-based request
 const chunkHandler = await aiProviders.execute({
     provider: aiProviders.providers[0],
     prompt: "What is the capital of Great Britain?",
+});
+
+// Using messages format (more flexible, allowing multiple messages and different roles)
+const chunkHandlerWithMessages = await aiProviders.execute({
+    provider: aiProviders.providers[0],
+    messages: [
+        { role: "system", content: "You are a helpful geography assistant." },
+        { role: "user", content: "What is the capital of Great Britain?" }
+    ]
+});
+
+// Working with images (basic approach)
+const chunkHandlerWithImage = await aiProviders.execute({
+    provider: aiProviders.providers[0],
+    prompt: "Describe what you see in this image",
+    images: ["data:image/jpeg;base64,/9j/4AAQSkZ..."] // Base64 encoded image
+});
+
+// Working with images using messages format
+const chunkHandlerWithContentBlocks = await aiProviders.execute({
+    provider: aiProviders.providers[0],
+    messages: [
+        { role: "system", content: "You are a helpful image analyst." },
+        { 
+            role: "user", 
+            content: [
+                { type: "text", text: "Describe what you see in this image" },
+                { type: "image_url", image_url: { url: "data:image/jpeg;base64,/9j/4AAQSkZ..." } }
+            ]
+        }
+    ]
 });
 
 // Handle chunk in stream mode
@@ -125,7 +161,7 @@ chunkHandler.abort();
 ```typescript
 const embeddings = await aiProviders.embed({
     provider: aiProviders.providers[0],
-    text: "What is the capital of Great Britain?",
+    input: "What is the capital of Great Britain?",  // Use 'input' parameter
 });
 
 // embeddings is just an array of numbers

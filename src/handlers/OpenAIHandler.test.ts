@@ -1,6 +1,6 @@
 import { OpenAIHandler } from './OpenAIHandler';
 import { IAIProvider } from '@obsidian-ai-providers/sdk';
-import { createAIHandlerTests, IMockClient, IVerifyApiCallsParams } from '../../test-utils/createAIHandlerTests';
+import { createAIHandlerTests, createDefaultVerifyApiCalls, IMockClient } from '../../test-utils/createAIHandlerTests';
 
 jest.mock('openai');
 
@@ -47,20 +47,10 @@ const createMockClient = (): IMockClient => ({
     }
 });
 
-const verifyApiCalls = ({ mockClient, executeParams }: IVerifyApiCallsParams) => {
-    expect(mockClient.chat?.completions.create).toHaveBeenCalledWith(
-        {
-            model: executeParams.provider.model,
-            messages: [
-                { role: 'system', content: executeParams.systemPrompt },
-                { role: 'user', content: executeParams.prompt }
-            ],
-            stream: true
-        },
-        expect.any(Object)
-    );
-};
+// Use the default OpenAI verification function
+const verifyApiCalls = createDefaultVerifyApiCalls();
 
+// Use createAIHandlerTests for common test cases
 createAIHandlerTests(
     'OpenAIHandler',
     createHandler,
@@ -70,6 +60,40 @@ createAIHandlerTests(
     {
         mockStreamResponse: {
             choices: [{ delta: { content: 'test response' } }]
+        },
+        // Add image handling test for OpenAI
+        imageHandlingOptions: {
+            verifyImageHandling: async (handler, mockClient) => {
+                // OpenAI image handling is done through content array with image_url objects
+                expect(mockClient.chat?.completions.create).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        messages: expect.arrayContaining([
+                            expect.objectContaining({
+                                content: expect.arrayContaining([
+                                    expect.objectContaining({ type: 'text' }),
+                                    expect.objectContaining({ 
+                                        type: 'image_url',
+                                        image_url: expect.anything()
+                                    })
+                                ])
+                            })
+                        ])
+                    }),
+                    expect.anything()
+                );
+            }
+        },
+        // Add embedding options for OpenAI
+        embeddingOptions: {
+            mockEmbeddingResponse: [[0.1, 0.2, 0.3]],
+            setupEmbedMock: (mockClient) => {
+                // Add mock for embeddings API in OpenAI
+                (mockClient as any).embeddings = {
+                    create: jest.fn().mockResolvedValue({
+                        data: [{ embedding: [0.1, 0.2, 0.3], index: 0 }]
+                    })
+                };
+            }
         }
     }
 ); 

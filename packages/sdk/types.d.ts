@@ -29,11 +29,30 @@ export interface IAIProvidersService {
     embed: (params: IAIProvidersEmbedParams) => Promise<number[][]>;
     execute: (params: IAIProvidersExecuteParams) => Promise<IChunkHandler>;
     checkCompatibility: (requiredVersion: number) => void;
+    migrateProvider: (provider: IAIProvider) => Promise<IAIProvider>;
 }
 
-export interface IAIProvidersExecuteParams {
-    prompt: string;
-    systemPrompt?: string;
+export interface IContentBlockText {
+    type: 'text';
+    text: string;
+}
+
+export interface IContentBlockImageUrl {
+    type: 'image_url';
+    image_url: {
+        url: string;
+    };
+}
+
+export type IContentBlock = IContentBlockText | IContentBlockImageUrl;
+
+export interface IChatMessage {
+    role: string;
+    content: string | IContentBlock[];
+    images?: string[];
+}
+
+export interface IAIProvidersExecuteParamsBase {
     provider: IAIProvider;
     images?: string[];
     options?: {
@@ -47,8 +66,23 @@ export interface IAIProvidersExecuteParams {
     };
 }
 
+export type IAIProvidersExecuteParamsWithPrompt = IAIProvidersExecuteParamsBase & {
+    messages?: never;
+    prompt: string;
+    systemPrompt?: string;
+};
+
+export type IAIProvidersExecuteParamsWithMessages = IAIProvidersExecuteParamsBase & {
+    messages: IChatMessage[];
+    prompt?: never;
+    systemPrompt?: never;
+};
+
+export type IAIProvidersExecuteParams = IAIProvidersExecuteParamsWithPrompt | IAIProvidersExecuteParamsWithMessages;
+
 export interface IAIProvidersEmbedParams {
-    input: string | string[];
+    input?: string | string[];
+    text?: string | string[];
     provider: IAIProvider;
 }
 
