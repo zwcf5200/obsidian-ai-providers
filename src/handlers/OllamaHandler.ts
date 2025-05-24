@@ -1,4 +1,4 @@
-import { IAIHandler, IAIProvider, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIProvidersPluginSettings } from '@obsidian-ai-providers/sdk';
+import { IAIHandler, IAIProvider, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIProvidersPluginSettings, ITokenUsage, ReportUsageCallback } from '@obsidian-ai-providers/sdk';
 import { Ollama } from 'ollama';
 import { electronFetch } from '../utils/electronFetch';
 import { obsidianFetch } from '../utils/obsidianFetch';
@@ -201,7 +201,7 @@ export class OllamaHandler implements IAIHandler {
         }
     }
 
-    async execute(params: IAIProvidersExecuteParams): Promise<IChunkHandler> {
+    async execute(params: IAIProvidersExecuteParams, reportUsage?: ReportUsageCallback): Promise<IChunkHandler> {
         logger.debug('Starting execute process with params:', {
             model: params.provider.model,
             messagesCount: params.messages?.length || 0,
@@ -229,7 +229,9 @@ export class OllamaHandler implements IAIHandler {
         (async () => {
             if (isAborted) return;
             
+            const requestStartTime = Date.now();
             let fullText = '';
+            let finalOllamaStats: any; // To store the final stats object from Ollama
 
             try {
                 const modelInfo = await this.getCachedModelInfo(
@@ -388,6 +390,11 @@ export class OllamaHandler implements IAIHandler {
                         break;
                     }
                     
+                    // Store the part if it seems to be the final stats object
+                    if (part.total_duration && part.prompt_eval_count !== undefined && part.eval_count !== undefined) {
+                        finalOllamaStats = part;
+                    }
+
                     // Extract content from message for chat API
                     const responseText = part.message?.content || '';
                     if (responseText) {
@@ -398,9 +405,32 @@ export class OllamaHandler implements IAIHandler {
 
                 if (!isAborted) {
                     logger.debug('Generation completed successfully:', {
-                        totalLength: fullText.length
+                        totalLength: fullText.length,
+                        finalStats: finalOllamaStats 
                     });
                     handlers.end.forEach(handler => handler(fullText));
+
+                    if (reportUsage && finalOllamaStats) {
+                        try {
+                            const usage: ITokenUsage = {
+                                promptTokens: finalOllamaStats.prompt_eval_count,
+                                completionTokens: finalOllamaStats.eval_count,
+                                totalTokens: (finalOllamaStats.prompt_eval_count || 0) + (finalOllamaStats.eval_count || 0)
+                            };
+                            // Ollama's total_duration is in nanoseconds
+                            const durationMs = finalOllamaStats.total_duration ? Math.round(finalOllamaStats.total_duration / 1_000_000) : (Date.now() - requestStartTime);
+                            reportUsage(usage, durationMs);
+                            logger.debug('Reported token usage:', { usage, durationMs });
+                        } catch (statsError) {
+                            logger.error('Error processing or reporting Ollama usage stats:', statsError, finalOllamaStats);
+                        }
+                    } else if (reportUsage) {
+                        // Fallback if finalOllamaStats wasn't captured but reportUsage is expected
+                        const durationMs = Date.now() - requestStartTime;
+                        // We don't have token counts in this case
+                        reportUsage({}, durationMs); 
+                        logger.warn('Ollama final stats not available for usage reporting. Reporting duration only.');
+                    }
                 }
             } catch (error) {
                 logger.error('Generation failed:', error);

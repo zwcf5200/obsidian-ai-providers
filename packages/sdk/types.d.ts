@@ -30,6 +30,30 @@ export interface IAIProvidersService {
     execute: (params: IAIProvidersExecuteParams) => Promise<IChunkHandler>;
     checkCompatibility: (requiredVersion: number) => void;
     migrateProvider: (provider: IAIProvider) => Promise<IAIProvider | false>;
+    getTokenConsumptionStats(): ITokenConsumptionStats;
+    resetTokenConsumptionStats(): void;
+    detectCapabilities(params: IAIProvidersExecuteParams, providerType?: AIProviderType): AICapability[];
+    getModelCapabilities(provider: IAIProvider): AICapability[];
+}
+
+export interface ITokenUsage {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+}
+
+export interface ITokenConsumptionStats {
+    totalPromptTokens: number;
+    totalCompletionTokens: number;
+    totalTokensConsumed: number;
+    generationSpeed?: number; // tokens per second, optional
+}
+
+export type AICapability = 'dialogue' | 'vision' | 'tool_use' | 'text_to_image' | 'embedding';
+
+export interface IModelCapabilities {
+    modelId: string;
+    capabilities: AICapability[];
 }
 
 export interface IContentBlockText {
@@ -86,10 +110,12 @@ export interface IAIProvidersEmbedParams {
     provider: IAIProvider;
 }
 
+export type ReportUsageCallback = (usage: ITokenUsage, durationMs: number) => void;
+
 export interface IAIHandler {
     fetchModels(provider: IAIProvider): Promise<string[]>;
     embed(params: IAIProvidersEmbedParams): Promise<number[][]>;
-    execute(params: IAIProvidersExecuteParams): Promise<IChunkHandler>;
+    execute(params: IAIProvidersExecuteParams, reportUsage?: ReportUsageCallback): Promise<IChunkHandler>;
 }
 
 export interface IAIProvidersPluginSettings {

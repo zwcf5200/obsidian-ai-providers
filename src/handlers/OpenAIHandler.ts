@@ -1,4 +1,4 @@
-import { IAIHandler, IAIProvider, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIProvidersPluginSettings } from '@obsidian-ai-providers/sdk';
+import { IAIHandler, IAIProvider, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIProvidersPluginSettings, ITokenUsage, ReportUsageCallback } from '@obsidian-ai-providers/sdk';
 import { electronFetch } from '../utils/electronFetch';
 import OpenAI from 'openai';
 import { obsidianFetch } from '../utils/obsidianFetch';
@@ -43,7 +43,7 @@ export class OpenAIHandler implements IAIHandler {
         return response.data.map(item => item.embedding);
     }
 
-    async execute(params: IAIProvidersExecuteParams): Promise<IChunkHandler> {
+    async execute(params: IAIProvidersExecuteParams, reportUsage?: ReportUsageCallback): Promise<IChunkHandler> {
         const controller = new AbortController();
         const openai = this.getClient(params.provider, this.settings.useNativeFetch ? fetch : electronFetch.bind({
             controller
@@ -119,6 +119,9 @@ export class OpenAIHandler implements IAIHandler {
 
         (async () => {
             if (isAborted) return;
+            
+            const requestStartTime = Date.now();
+            let lastChunkUsage: OpenAI.CompletionUsage | undefined;
         
             try {
                 const response = await openai.chat.completions.create({
@@ -137,9 +140,21 @@ export class OpenAIHandler implements IAIHandler {
                         fullText += content;
                         handlers.data.forEach(handler => handler(content, fullText));
                     }
+                    if (chunk.usage) {
+                        lastChunkUsage = chunk.usage;
+                    }
                 }
                 if (!isAborted) {
                     handlers.end.forEach(handler => handler(fullText));
+                    if (reportUsage && lastChunkUsage) {
+                        const usage: ITokenUsage = {
+                            promptTokens: lastChunkUsage.prompt_tokens,
+                            completionTokens: lastChunkUsage.completion_tokens,
+                            totalTokens: lastChunkUsage.total_tokens,
+                        };
+                        const durationMs = Date.now() - requestStartTime;
+                        reportUsage(usage, durationMs);
+                    }
                 }
             } catch (error) {
                 handlers.error.forEach(handler => handler(error as Error));
