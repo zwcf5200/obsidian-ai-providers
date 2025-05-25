@@ -122,6 +122,9 @@
 
 .bulk-add-refresh-container {
     margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .bulk-add-select-container {
@@ -137,6 +140,7 @@
     border-radius: 4px;
     padding: 10px;
     margin-top: 10px;
+    background-color: var(--background-secondary);
 }
 
 .bulk-add-filter-container {
@@ -144,6 +148,9 @@
     display: flex;
     align-items: center;
     gap: 5px;
+    background-color: var(--background-primary);
+    padding: 5px;
+    border-radius: 4px;
 }
 
 .bulk-add-filter-container input {
@@ -154,11 +161,20 @@
     font-weight: bold;
     margin: 10px 0;
     color: var(--text-accent);
+    background-color: var(--background-primary-alt);
+    padding: 5px 10px;
+    border-radius: 4px;
+    display: inline-block;
 }
 
 .bulk-add-model-item {
-    padding: 5px;
+    padding: 8px;
     border-bottom: 1px solid var(--background-modifier-border);
+    transition: background-color 0.2s ease;
+}
+
+.bulk-add-model-item:hover {
+    background-color: var(--background-primary);
 }
 
 .bulk-add-model-item:last-child {
@@ -170,6 +186,8 @@
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+    padding-top: 15px;
+    border-top: 1px solid var(--background-modifier-border);
 }
 
 /* 多模型添加按钮 */
@@ -186,11 +204,11 @@
 }
 
 .bulk-add-model-existing {
-    background-color: var(--background-secondary);
+    background-color: var(--background-modifier-success-hover);
 }
 
 .bulk-add-existing-indicator {
-    color: var(--text-accent);
+    color: var(--text-success);
     font-weight: bold;
     margin-right: 4px;
 }
@@ -200,4 +218,117 @@
     color: var(--text-muted);
     margin: 8px 0;
     font-style: italic;
+    background-color: var(--background-secondary-alt);
+    padding: 8px;
+    border-radius: 4px;
+    border-left: 3px solid var(--text-accent);
+}
+
+/* 提供商分组样式 */
+.ai-providers-groups-container {
+    margin-top: 16px;
+}
+
+.ai-providers-group {
+    margin-bottom: 24px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s ease;
+}
+
+.ai-providers-group:hover {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.ai-providers-group-header {
+    padding: 12px 16px;
+    background-color: var(--background-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ai-providers-group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.ai-providers-group-title h3 {
+    margin: 0;
+    font-size: var(--font-ui-medium);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ai-providers-group-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.ai-providers-group-edit-button,
+.ai-providers-group-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-s);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-providers-group-edit-button:hover,
+.ai-providers-group-toggle:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.ai-providers-group-count {
+    font-size: var(--font-small);
+    color: var(--text-muted);
+}
+
+.ai-providers-group-url {
+    font-size: var(--font-small);
+    color: var(--text-muted);
+    margin: 0;
+    background-color: var(--background-secondary-alt);
+    border-radius: 4px;
+    font-family: var(--font-monospace);
+    word-break: break-all;
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding: 6px 16px;
+}
+
+.ai-providers-models-container {
+    padding: 8px 0;
+}
+
+.ai-providers-models-container .setting-item {
+    padding-left: 24px;
+    padding-right: 24px;
+    border-top: none;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ai-providers-models-container .setting-item:last-child {
+    border-bottom: none;
+}
+
+.ai-providers-empty-message {
+    color: var(--text-muted);
+    font-style: italic;
+    text-align: center;
+    padding: 24px;
+    margin-top: 16px;
 }

@@ -11,6 +11,44 @@ export class BulkAddModelsModal extends Modal {
     private toggleComponents: Map<string, ToggleComponent> = new Map();
     private providerTemplate: IAIProvider;
     
+    // 统一的提供商类型标签定义
+    private readonly providerTypeLabels: Record<string, string> = {
+        'openai': 'OpenAI',
+        'ollama': 'Ollama',
+        'openrouter': 'OpenRouter',
+        'gemini': 'Google Gemini',
+        'lmstudio': 'LM Studio',
+        'groq': 'Groq',
+        'custom': 'Custom'
+    };
+    
+    // 统一的能力映射关系
+    private readonly capabilityMappings: Record<string, string[]> = {
+        'embedding': ['embedding'],
+        'vision': ['vision', 'image'],
+        'dialogue': ['dialogue', 'chat', 'completion'],
+        'tool_use': ['tool', 'tools', 'function', 'functions'],
+        'text_to_image': ['image-to-text', 'text-to-image']
+    };
+    
+    // 统一的能力显示标签
+    private readonly capabilityLabels: Record<string, string> = {
+        'dialogue': '对话',
+        'vision': '视觉',
+        'tool_use': '工具',
+        'text_to_image': '文生图',
+        'embedding': '嵌入'
+    };
+    
+    // 统一的能力图标
+    private readonly capabilityIcons: Record<string, string> = {
+        'dialogue': 'message-square',
+        'vision': 'image',
+        'tool_use': 'tool',
+        'text_to_image': 'image-plus',
+        'embedding': 'box'
+    };
+    
     private readonly defaultProvidersUrls = {
         openai: "https://api.openai.com/v1",
         ollama: "http://localhost:11434",
@@ -42,8 +80,17 @@ export class BulkAddModelsModal extends Modal {
     onOpen() {
         const { contentEl } = this;
         
-        // 添加标题
-        contentEl.createEl('h2', { text: '批量添加模型' });
+        // 添加标题 - 区分新增和编辑模式
+        const isEditingExisting = !!this.providerTemplate.url;
+        const titleText = isEditingExisting 
+            ? `批量编辑 ${this.getProviderTypeLabel(this.providerTemplate.type)} 模型` 
+            : '批量添加模型';
+            
+        contentEl.createEl('h2', { text: titleText });
+        
+        // 添加唯一标识，避免重复渲染
+        const uniqueId = `bulk-editor-${this.providerTemplate.type}-${this.providerTemplate.url || 'new'}`;
+        contentEl.setAttribute('data-editor-id', uniqueId);
         
         // 添加提供商基本信息设置
         this.createProviderBasicSettings(contentEl);
@@ -52,7 +99,14 @@ export class BulkAddModelsModal extends Modal {
         this.createModelSelectionArea(contentEl);
         
         // 添加按钮区域
-        this.createButtonArea(contentEl);
+        this.createButtonArea(contentEl, isEditingExisting);
+    }
+    
+    /**
+     * 获取提供商类型的显示名称
+     */
+    private getProviderTypeLabel(type: string): string {
+        return this.providerTypeLabels[type as keyof typeof this.providerTypeLabels] || type;
     }
     
     private createProviderBasicSettings(contentEl: HTMLElement) {
@@ -62,15 +116,7 @@ export class BulkAddModelsModal extends Modal {
             .setDesc('选择要批量添加模型的提供商类型')
             .addDropdown(dropdown => {
                 dropdown
-                    .addOptions({
-                        "openai": "OpenAI",
-                        "ollama": "Ollama",
-                        "openrouter": "OpenRouter",
-                        "gemini": "Google Gemini",
-                        "lmstudio": "LM Studio",
-                        "groq": "Groq",
-                        "custom": "Custom"
-                    })
+                    .addOptions(this.providerTypeLabels)
                     .setValue(this.providerTemplate.type)
                     .onChange(value => {
                         this.providerTemplate.type = value as AIProviderType;
@@ -82,15 +128,6 @@ export class BulkAddModelsModal extends Modal {
                 return dropdown;
             });
             
-        // 提供商名称前缀
-        new Setting(contentEl)
-            .setName('提供商名称前缀')
-            .setDesc('添加的每个模型都将使用此前缀，最终名称格式为：前缀 + 模型名')
-            .addText(text => text
-                .setPlaceholder('例如：Ollama')
-                .setValue(this.providerTemplate.name)
-                .onChange(value => this.providerTemplate.name = value));
-                
         // 提供商URL
         new Setting(contentEl)
             .setName('提供商URL')
@@ -114,16 +151,30 @@ export class BulkAddModelsModal extends Modal {
         const modelAreaEl = contentEl.createDiv('bulk-add-models-area');
         
         // 模型区域标题
-        modelAreaEl.createEl('h3', { text: '选择要添加的模型' });
+        const isEditingExisting = !!this.providerTemplate.url;
+        const titleText = isEditingExisting ? '管理模型' : '选择要添加的模型';
+        modelAreaEl.createEl('h3', { text: titleText });
         
         // 添加说明文字
-        const descEl = modelAreaEl.createEl('p', { 
-            text: '您可以添加新模型或移除现有模型。已添加的模型会自动被标记，取消选择已添加的模型将会在保存时删除它们。' 
-        });
+        const descText = isEditingExisting
+            ? '您可以添加新模型或移除现有模型。已添加的模型会自动被标记，取消选择已添加的模型将会在保存时删除它们。'
+            : '点击"获取可用模型"按钮以列出可用的模型，然后选择您想要添加的模型。';
+        
+        const descEl = modelAreaEl.createEl('p', { text: descText });
         descEl.addClass('bulk-add-description');
         
         // 刷新模型按钮
-        const refreshContainer = modelAreaEl.createDiv('bulk-add-refresh-container');
+        this.createModelFetchControls(modelAreaEl);
+        
+        // 模型列表
+        this.createModelList(modelAreaEl);
+    }
+    
+    /**
+     * 创建模型获取控制区域
+     */
+    private createModelFetchControls(container: HTMLElement) {
+        const refreshContainer = container.createDiv('bulk-add-refresh-container');
         const refreshButton = refreshContainer.createEl('button', { text: '获取可用模型' });
         refreshButton.addClass('mod-cta');
         
@@ -138,100 +189,130 @@ export class BulkAddModelsModal extends Modal {
         
         // 添加全选/取消全选按钮
         if (this.availableModels.length > 0) {
-            const selectAllContainer = modelAreaEl.createDiv('bulk-add-select-container');
-            
-            const selectAllButton = selectAllContainer.createEl('button', { text: '全选' });
-            selectAllButton.addEventListener('click', () => {
-                this.availableModels.forEach(model => {
-                    this.selectedModels.add(model);
-                    const toggle = this.toggleComponents.get(model);
-                    if (toggle) toggle.setValue(true);
-                });
-            });
-            
-            const deselectAllButton = selectAllContainer.createEl('button', { text: '取消全选' });
-            deselectAllButton.addEventListener('click', () => {
-                this.selectedModels.clear();
-                this.toggleComponents.forEach(toggle => toggle.setValue(false));
-            });
-        }
-        
-        // 模型列表
-        const modelsListEl = modelAreaEl.createDiv('bulk-add-models-list');
-        
-        if (this.availableModels.length === 0 && !this.isLoadingModels) {
-            modelsListEl.createEl('p', { text: '点击上方按钮获取可用模型' });
-        } else if (this.isLoadingModels) {
-            modelsListEl.createEl('p', { text: '正在加载模型...' });
-        } else {
-            // 模型过滤输入框
-            const filterContainer = modelsListEl.createDiv('bulk-add-filter-container');
-            filterContainer.createEl('span', { text: '筛选：' });
-            const filterInput = filterContainer.createEl('input') as HTMLInputElement;
-            filterInput.type = 'text';
-            filterInput.placeholder = '输入关键词筛选模型';
-            
-            filterInput.addEventListener('input', (e) => {
-                const filterValue = (e.target as HTMLInputElement).value.toLowerCase();
-                const modelElements = modelsListEl.querySelectorAll('.bulk-add-model-item');
-                
-                modelElements.forEach(el => {
-                    const modelName = el.getAttribute('data-model-name') || '';
-                    if (modelName.toLowerCase().includes(filterValue)) {
-                        (el as unknown as HTMLElement).style.display = '';
-                    } else {
-                        (el as unknown as HTMLElement).style.display = 'none';
-                    }
-                });
-            });
-            
-            // 显示已选择的模型数量
-            const selectedCountEl = modelsListEl.createDiv('bulk-add-selected-count');
-            selectedCountEl.setText(`已选择 ${this.selectedModels.size} 个模型`);
-            
-            // 创建模型列表
-            this.availableModels.forEach(model => {
-                const modelItemEl = modelsListEl.createDiv('bulk-add-model-item');
-                modelItemEl.setAttribute('data-model-name', model);
-                
-                // 检查是否是已添加的模型
-                const isExistingModel = this.selectedModels.has(model);
-                if (isExistingModel) {
-                    modelItemEl.addClass('bulk-add-model-existing');
-                }
-                
-                const setting = new Setting(modelItemEl);
-                
-                // 为已添加的模型添加标记
-                if (isExistingModel) {
-                    const nameEl = setting.nameEl.createSpan('bulk-add-existing-indicator');
-                    nameEl.setText('[已添加] ');
-                    nameEl.setAttr('title', '此模型已添加到配置中');
-                }
-                
-                setting.setName(model)
-                    .addToggle(toggle => {
-                        toggle.setValue(this.selectedModels.has(model))
-                            .onChange(value => {
-                                if (value) {
-                                    this.selectedModels.add(model);
-                                } else {
-                                    this.selectedModels.delete(model);
-                                }
-                                selectedCountEl.setText(`已选择 ${this.selectedModels.size} 个模型`);
-                            });
-                        
-                        this.toggleComponents.set(model, toggle);
-                        return toggle;
-                    });
-            });
+            this.createModelSelectionControls(container);
         }
     }
     
-    private createButtonArea(contentEl: HTMLElement) {
+    /**
+     * 创建模型选择控制按钮
+     */
+    private createModelSelectionControls(container: HTMLElement) {
+        const selectAllContainer = container.createDiv('bulk-add-select-container');
+        
+        const selectAllButton = selectAllContainer.createEl('button', { text: '全选' });
+        selectAllButton.addEventListener('click', () => {
+            this.availableModels.forEach(model => {
+                this.selectedModels.add(model);
+                const toggle = this.toggleComponents.get(model);
+                if (toggle) toggle.setValue(true);
+            });
+        });
+        
+        const deselectAllButton = selectAllContainer.createEl('button', { text: '取消全选' });
+        deselectAllButton.addEventListener('click', () => {
+            this.selectedModels.clear();
+            this.toggleComponents.forEach(toggle => toggle.setValue(false));
+        });
+    }
+    
+    /**
+     * 创建模型列表区域
+     */
+    private createModelList(container: HTMLElement) {
+        const modelsListEl = container.createDiv('bulk-add-models-list');
+        
+        if (this.availableModels.length === 0 && !this.isLoadingModels) {
+            modelsListEl.createEl('p', { text: '点击上方按钮获取可用模型' });
+            return;
+        } 
+        
+        if (this.isLoadingModels) {
+            modelsListEl.createEl('p', { text: '正在加载模型...' });
+            return;
+        }
+        
+        // 模型过滤输入框
+        this.createModelFilterInput(modelsListEl);
+        
+        // 显示已选择的模型数量
+        const selectedCountEl = modelsListEl.createDiv('bulk-add-selected-count');
+        selectedCountEl.setText(`已选择 ${this.selectedModels.size} 个模型`);
+        
+        // 创建模型列表
+        this.createModelItems(modelsListEl, selectedCountEl);
+    }
+    
+    /**
+     * 创建模型过滤输入框
+     */
+    private createModelFilterInput(container: HTMLElement) {
+        const filterContainer = container.createDiv('bulk-add-filter-container');
+        filterContainer.createEl('span', { text: '筛选：' });
+        const filterInput = filterContainer.createEl('input') as HTMLInputElement;
+        filterInput.type = 'text';
+        filterInput.placeholder = '输入关键词筛选模型';
+        
+        filterInput.addEventListener('input', (e) => {
+            const filterValue = (e.target as HTMLInputElement).value.toLowerCase();
+            const modelElements = container.querySelectorAll('.bulk-add-model-item');
+            
+            modelElements.forEach(el => {
+                const modelName = el.getAttribute('data-model-name') || '';
+                if (modelName.toLowerCase().includes(filterValue)) {
+                    (el as unknown as HTMLElement).style.display = '';
+                } else {
+                    (el as unknown as HTMLElement).style.display = 'none';
+                }
+            });
+        });
+    }
+    
+    /**
+     * 创建模型项列表
+     */
+    private createModelItems(container: HTMLElement, countElement: HTMLElement) {
+        this.availableModels.forEach(model => {
+            const modelItemEl = container.createDiv('bulk-add-model-item');
+            modelItemEl.setAttribute('data-model-name', model);
+            
+            // 检查是否是已添加的模型
+            const isExistingModel = this.selectedModels.has(model);
+            if (isExistingModel) {
+                modelItemEl.addClass('bulk-add-model-existing');
+            }
+            
+            const setting = new Setting(modelItemEl);
+            
+            // 为已添加的模型添加标记
+            if (isExistingModel) {
+                const nameEl = setting.nameEl.createSpan('bulk-add-existing-indicator');
+                nameEl.setText('[已添加] ');
+                nameEl.setAttr('title', '此模型已添加到配置中');
+            }
+            
+            setting.setName(model)
+                .addToggle(toggle => {
+                    toggle.setValue(this.selectedModels.has(model))
+                        .onChange(value => {
+                            if (value) {
+                                this.selectedModels.add(model);
+                            } else {
+                                this.selectedModels.delete(model);
+                            }
+                            countElement.setText(`已选择 ${this.selectedModels.size} 个模型`);
+                        });
+                    
+                    this.toggleComponents.set(model, toggle);
+                    return toggle;
+                });
+        });
+    }
+    
+    private createButtonArea(contentEl: HTMLElement, isEditing: boolean = false) {
         const buttonContainer = contentEl.createDiv('bulk-add-button-container');
         
-        const saveButton = buttonContainer.createEl('button', { text: '添加所选模型' });
+        const saveButtonText = isEditing ? '保存更改' : '添加所选模型';
+        const saveButton = buttonContainer.createEl('button', { text: saveButtonText });
         saveButton.addClass('mod-cta');
         saveButton.addEventListener('click', async () => {
             if (this.selectedModels.size === 0) {
@@ -258,6 +339,13 @@ export class BulkAddModelsModal extends Modal {
             this.isLoadingModels = true;
             this.display();
             
+            // 保存之前已选择的模型列表
+            const previouslySelected = new Set(this.selectedModels);
+            
+            // 清空模型列表
+            this.availableModels = [];
+            this.toggleComponents.clear();
+            
             // 创建临时提供商对象用于获取模型列表
             const tempProvider: IAIProvider = {
                 ...this.providerTemplate,
@@ -268,9 +356,8 @@ export class BulkAddModelsModal extends Modal {
             const models = await this.plugin.aiProviders.fetchModels(tempProvider);
             this.availableModels = models;
             
-            // 清空之前的选择
+            // 重置选择状态
             this.selectedModels.clear();
-            this.toggleComponents.clear();
             
             // 获取已经添加的模型
             const existingProviders = this.plugin.settings.providers || [];
@@ -281,9 +368,9 @@ export class BulkAddModelsModal extends Modal {
                     .map(p => p.model)
             );
             
-            // 标记已添加的模型为已选择
+            // 标记已添加的模型为已选择，同时保留之前已选择的状态
             models.forEach(model => {
-                if (existingModels.has(model)) {
+                if (existingModels.has(model) || previouslySelected.has(model)) {
                     this.selectedModels.add(model);
                 }
             });
@@ -347,6 +434,46 @@ export class BulkAddModelsModal extends Modal {
             removedCount = modelsToRemove.size;
         }
         
+        // 预先获取这批模型的能力类型
+        // 为了优化性能，我们只需要查询一次能力
+        const modelCapabilities = new Map<string, any>();
+        
+        // 如果是ollama类型，我们可以使用ollamaHandler获取准确的能力信息
+        if (this.providerTemplate.type === 'ollama' && this.selectedModels.size > 0) {
+            try {
+                // 获取Ollama处理器
+                // @ts-ignore - 直接访问内部处理器
+                const ollamaHandler = this.plugin.aiProviders?.handlers?.ollama;
+                
+                // 为效率起见，只对一个模型进行能力检测，然后应用到所有同类型的模型
+                const sampleModel = Array.from(this.selectedModels)[0];
+                if (sampleModel && ollamaHandler && typeof (ollamaHandler as any).detectModelCapabilities === 'function') {
+                    const sampleProvider = { 
+                        ...this.providerTemplate, 
+                        model: sampleModel,
+                        id: 'temp'
+                    };
+                    
+                    // 检测能力
+                    const ollamaCapabilities = await (ollamaHandler as any).detectModelCapabilities(sampleProvider, sampleModel);
+                    
+                    // 映射能力
+                    if (ollamaCapabilities && ollamaCapabilities.length > 0) {
+                        const mappedCapabilities = this.mapModelCapabilities(ollamaCapabilities);
+                        
+                        // 存储映射后的能力
+                        this.selectedModels.forEach(model => {
+                            modelCapabilities.set(model, mappedCapabilities);
+                        });
+                        
+                        logger.debug(`自动检测到 ${sampleModel} 的能力: ${mappedCapabilities.join(', ')}`);
+                    }
+                }
+            } catch (error) {
+                logger.error('自动检测模型能力失败:', error);
+            }
+        }
+        
         // 2. 添加新选择的模型
         for (const model of this.selectedModels) {
             // 如果模型已存在，跳过添加
@@ -355,13 +482,12 @@ export class BulkAddModelsModal extends Modal {
                 continue;
             }
             
-            const provider: IAIProvider = {
-                ...this.providerTemplate,
-                id: `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                name: `${this.providerTemplate.name} ${model}`,
-                model: model,
-                availableModels: [model]
-            };
+            // 获取能力配置
+            const capabilities = modelCapabilities.has(model) ? 
+                modelCapabilities.get(model) : undefined;
+                
+            // 创建新的提供商对象
+            const provider = this.createProviderObject(model, capabilities);
             
             providers.push(provider);
             newCount++;
@@ -390,6 +516,33 @@ export class BulkAddModelsModal extends Modal {
             new Notice('保存模型失败');
         }
     }
+    
+    /**
+     * 将Ollama能力映射到插件支持的能力
+     */
+    private mapModelCapabilities(ollamaCapabilities: string[]): string[] {
+        const mappedCapabilities = new Set<string>();
+        
+        // 遍历所有Ollama报告的能力
+        ollamaCapabilities.forEach((cap: string) => {
+            const lowerCap = cap.toLowerCase();
+            
+            // 查找匹配的能力映射
+            for (const [capability, variants] of Object.entries(this.capabilityMappings)) {
+                if (variants.includes(lowerCap)) {
+                    mappedCapabilities.add(capability);
+                    break;
+                }
+            }
+        });
+        
+        // 确保至少有对话能力
+        if (mappedCapabilities.size === 0) {
+            mappedCapabilities.add('dialogue');
+        }
+        
+        return Array.from(mappedCapabilities);
+    }
 
     onClose() {
         const { contentEl } = this;
@@ -398,7 +551,128 @@ export class BulkAddModelsModal extends Modal {
     
     display() {
         const { contentEl } = this;
+        
+        // 清空内容区域
         contentEl.empty();
+        
+        // 重新打开（创建新的UI）
         this.onOpen();
+    }
+
+    /**
+     * 设置模板提供商，并预加载组内已有的模型
+     * 允许外部代码指定基础模板信息
+     */
+    public async setProviderTemplate(template: IAIProvider) {
+        // 复制模板信息，确保不会修改原始对象
+        this.providerTemplate = { ...template };
+        
+        // 确保类型字段是有效的提供商类型
+        if (!this.defaultProvidersUrls[this.providerTemplate.type as keyof typeof this.defaultProvidersUrls]) {
+            // 如果类型无效，设置为默认类型
+            this.providerTemplate.type = 'ollama';
+            this.providerTemplate.url = this.defaultProvidersUrls['ollama'];
+        }
+        
+        // 如果是在编辑已有组，预加载该组的模型
+        if (this.providerTemplate.url) {
+            await this.preloadExistingModels();
+        }
+        
+        // 重新显示
+        if (this.contentEl) {
+            this.display();
+        }
+    }
+    
+    /**
+     * 预加载当前类型和URL组合的现有模型
+     */
+    private async preloadExistingModels() {
+        // 清空模型和选择
+        this.availableModels = [];
+        this.selectedModels.clear();
+        this.toggleComponents.clear();
+        
+        // 标记正在加载状态
+        this.isLoadingModels = true;
+        
+        try {
+            // 获取该组现有的模型提供商
+            const existingProviders = this.plugin.settings.providers || [];
+            const currentGroupProviders = existingProviders.filter(p => 
+                p.type === this.providerTemplate.type && 
+                (p.url || '') === (this.providerTemplate.url || '')
+            );
+            
+            // 如果有现有模型，尝试提取它们
+            if (currentGroupProviders.length > 0) {
+                // 尝试加载可用模型列表
+                try {
+                    // 创建临时提供商对象用于获取模型列表
+                    const tempProvider: IAIProvider = {
+                        ...this.providerTemplate,
+                        id: `temp-${Date.now()}`,
+                        name: 'Temporary Provider'
+                    };
+                    
+                    // 获取可用模型列表
+                    const models = await this.plugin.aiProviders.fetchModels(tempProvider);
+                    this.availableModels = models;
+                    
+                    // 标记已添加的模型
+                    const existingModelNames = new Set(currentGroupProviders.map(p => p.model));
+                    models.forEach(model => {
+                        if (existingModelNames.has(model)) {
+                            this.selectedModels.add(model);
+                        }
+                    });
+                    
+                    if (models.length > 0) {
+                        new Notice(`已加载 ${models.length} 个可用模型，其中 ${this.selectedModels.size} 个已添加`);
+                    }
+                    
+                } catch (error) {
+                    // 如果无法获取完整列表，至少显示现有的模型
+                    logger.debug('无法获取完整模型列表，仅显示现有模型', error);
+                    this.availableModels = Array.from(new Set(currentGroupProviders.map(p => p.model).filter(Boolean) as string[]));
+                    this.availableModels.forEach(model => this.selectedModels.add(model));
+                    
+                    new Notice(`无法获取完整模型列表，已加载 ${this.availableModels.length} 个现有模型`);
+                }
+            }
+        } catch (error) {
+            logger.error('预加载现有模型失败:', error);
+            new Notice('预加载现有模型失败');
+        } finally {
+            this.isLoadingModels = false;
+            
+            // 确保UI更新
+            if (this.contentEl) {
+                this.display();
+            }
+        }
+    }
+
+    /**
+     * 创建新的提供商对象，确保类型安全
+     */
+    private createProviderObject(model: string, capabilities?: string[]): IAIProvider {
+        const newProvider: IAIProvider = {
+            id: `id-${Date.now().toString()}-${Math.random().toString(36).substring(2, 11)}`,
+            // 直接使用模型名称作为提供商名称，不再使用前缀
+            name: model,
+            type: this.providerTemplate.type,
+            url: this.providerTemplate.url,
+            apiKey: this.providerTemplate.apiKey,
+            model: model
+        };
+        
+        // 添加能力信息（如果有）
+        if (capabilities && capabilities.length > 0) {
+            (newProvider as any).userDefinedCapabilities = capabilities;
+        }
+        
+        return newProvider;
     }
 } 

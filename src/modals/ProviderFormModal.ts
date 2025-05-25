@@ -38,6 +38,18 @@ export class ProviderFormModal extends Modal {
                 text.setValue(this.provider.model || '')
                     .onChange(value => {
                         this.provider.model = value;
+                        if (value) {
+                            const typeLabels: Record<string, string> = {
+                                'openai': 'OpenAI',
+                                'ollama': 'Ollama',
+                                'openrouter': 'OpenRouter',
+                                'gemini': 'Google Gemini',
+                                'lmstudio': 'LM Studio',
+                                'groq': 'Groq',
+                                'custom': 'Custom'
+                            };
+                            this.provider.name = value;
+                        }
                     });
                 text.inputEl.setAttribute('data-testid', 'model-input');
                 return text;
@@ -68,6 +80,10 @@ export class ProviderFormModal extends Modal {
                     .onChange(value => {
                         this.provider.model = value;
                         dropdown.selectEl.title = value;
+                        
+                        if (value && value !== "none" && value !== "loading") {
+                            this.provider.name = value;
+                        }
                     });
                 
                 dropdown.selectEl.setAttribute('data-testid', 'model-dropdown');
@@ -160,20 +176,27 @@ export class ProviderFormModal extends Modal {
                         this.provider.url = this.defaultProvidersUrls[value as AIProviderType];
                         this.provider.availableModels = undefined;
                         this.provider.model = undefined;
+                        
+                        // 自动设置名称为模型名称（会在选择模型后更新）
+                        const typeLabels: Record<string, string> = {
+                            'openai': 'OpenAI',
+                            'ollama': 'Ollama',
+                            'openrouter': 'OpenRouter',
+                            'gemini': 'Google Gemini',
+                            'lmstudio': 'LM Studio',
+                            'groq': 'Groq',
+                            'custom': 'Custom'
+                        };
+                        if (!this.provider.name || this.provider.name === "") {
+                            this.provider.name = typeLabels[value as keyof typeof typeLabels] || value;
+                        }
+                        
                         this.display();
                     });
                 
                 dropdown.selectEl.setAttribute('data-testid', 'provider-type-dropdown');
                 return dropdown;
             });
-
-        new Setting(contentEl)
-            .setName(I18n.t('settings.providerName'))
-            .setDesc(I18n.t('settings.providerNameDesc'))
-            .addText(text => text
-                .setPlaceholder(I18n.t('settings.providerNamePlaceholder'))
-                .setValue(this.provider.name)
-                .onChange(value => this.provider.name = value));
 
         new Setting(contentEl)
             .setName(I18n.t('settings.providerUrl'))
