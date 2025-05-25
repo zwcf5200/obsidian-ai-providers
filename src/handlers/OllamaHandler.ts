@@ -10,6 +10,9 @@ interface ExtendedChatResponse {
         content?: string;
     }
     total_tokens?: number;
+    total_duration?: number;
+    prompt_eval_count?: number;
+    eval_count?: number;
 }
 
 // Add interface for model cache

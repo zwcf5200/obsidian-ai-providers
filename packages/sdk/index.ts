@@ -176,7 +176,7 @@ class AIProvidersFallbackSettingsTab extends PluginSettingTab {
         containerEl.empty();
 
         const aiProvidersNotice = containerEl.createEl("div", {
-            cls: "ai-providers-notice"
+            text: "ai-providers-notice"
         });
 
         aiProvidersNotice.appendChild(sanitizeHTMLToDom(`
@@ -195,5 +195,10 @@ export type {
     IAIProvidersEmbedParams,
     IAIHandler,
     IAIProvidersPluginSettings,
-    AIProviderType
+    AIProviderType,
+    ITokenUsage,
+    ITokenConsumptionStats,
+    ReportUsageCallback,
+    AICapability,
+    IModelCapabilities
 } from './types';

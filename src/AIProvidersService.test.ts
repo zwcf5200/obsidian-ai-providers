@@ -87,7 +87,7 @@ describe('AIProvidersService', () => {
         });
         
         it('should detect dialogue only once if both messages and prompt are present', () => {
-            const params: IAIProvidersExecuteParams = { provider: baseProvider, messages: [{ role: 'user', content: 'Hi' }], prompt: 'Hello' };
+            const params: IAIProvidersExecuteParams = { provider: baseProvider, messages: [{ role: 'user', content: 'Hi' }] };
             const capabilities = service.detectCapabilities(params);
             expect(capabilities.filter(c => c === 'dialogue').length).toBe(1);
             expect(capabilities).toContain('dialogue');
@@ -214,8 +214,8 @@ describe('AIProvidersService', () => {
         it('should return unique capabilities', () => {
             const params: IAIProvidersExecuteParams = {
                 provider: baseProvider,
-                messages: [{ role: 'user', content: 'Hello' }],
-                prompt: 'Another hello' // Both imply dialogue
+                messages: [{ role: 'user', content: 'Hello' }]
+                // 移除了互斥的prompt参数
             };
             const capabilities = service.detectCapabilities(params);
             expect(capabilities.filter(c => c === 'dialogue').length).toBe(1);

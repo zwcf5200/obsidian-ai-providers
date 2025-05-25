@@ -4,7 +4,7 @@ export type ObsidianEvents = {
     'ai-providers-ready': () => void;
 };
 
-export type AIProviderType = 'openai' | 'ollama' | 'gemini' | 'openrouter' | 'lmstudio';
+export type AIProviderType = 'openai' | 'ollama' | 'gemini' | 'openrouter' | 'lmstudio' | 'groq' | 'custom';
 export interface IAIProvider {
     id: string;
     name: string;
@@ -46,7 +46,7 @@ export interface ITokenConsumptionStats {
     totalPromptTokens: number;
     totalCompletionTokens: number;
     totalTokensConsumed: number;
-    generationSpeed?: number; // tokens per second, optional
+    generationSpeed?: number; // tokens per second
 }
 
 export type AICapability = 'dialogue' | 'vision' | 'tool_use' | 'text_to_image' | 'embedding';
