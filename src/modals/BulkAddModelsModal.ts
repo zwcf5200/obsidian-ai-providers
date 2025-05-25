@@ -24,7 +24,7 @@ export class BulkAddModelsModal extends Modal {
     constructor(
         app: App,
         private plugin: AIProvidersPlugin,
-        private onSave: (providers: IAIProvider[]) => Promise<void>
+        private onSave?: (providers: IAIProvider[]) => Promise<void>
     ) {
         super(app);
         
@@ -116,6 +116,12 @@ export class BulkAddModelsModal extends Modal {
         // 模型区域标题
         modelAreaEl.createEl('h3', { text: '选择要添加的模型' });
         
+        // 添加说明文字
+        const descEl = modelAreaEl.createEl('p', { 
+            text: '您可以添加新模型或移除现有模型。已添加的模型会自动被标记，取消选择已添加的模型将会在保存时删除它们。' 
+        });
+        descEl.addClass('bulk-add-description');
+        
         // 刷新模型按钮
         const refreshContainer = modelAreaEl.createDiv('bulk-add-refresh-container');
         const refreshButton = refreshContainer.createEl('button', { text: '获取可用模型' });
@@ -188,8 +194,22 @@ export class BulkAddModelsModal extends Modal {
                 const modelItemEl = modelsListEl.createDiv('bulk-add-model-item');
                 modelItemEl.setAttribute('data-model-name', model);
                 
-                new Setting(modelItemEl)
-                    .setName(model)
+                // 检查是否是已添加的模型
+                const isExistingModel = this.selectedModels.has(model);
+                if (isExistingModel) {
+                    modelItemEl.addClass('bulk-add-model-existing');
+                }
+                
+                const setting = new Setting(modelItemEl);
+                
+                // 为已添加的模型添加标记
+                if (isExistingModel) {
+                    const nameEl = setting.nameEl.createSpan('bulk-add-existing-indicator');
+                    nameEl.setText('[已添加] ');
+                    nameEl.setAttr('title', '此模型已添加到配置中');
+                }
+                
+                setting.setName(model)
                     .addToggle(toggle => {
                         toggle.setValue(this.selectedModels.has(model))
                             .onChange(value => {
@@ -252,10 +272,26 @@ export class BulkAddModelsModal extends Modal {
             this.selectedModels.clear();
             this.toggleComponents.clear();
             
+            // 获取已经添加的模型
+            const existingProviders = this.plugin.settings.providers || [];
+            const existingModels = new Set(
+                existingProviders
+                    .filter(p => p.type === this.providerTemplate.type && 
+                           (p.url || '') === (this.providerTemplate.url || ''))
+                    .map(p => p.model)
+            );
+            
+            // 标记已添加的模型为已选择
+            models.forEach(model => {
+                if (existingModels.has(model)) {
+                    this.selectedModels.add(model);
+                }
+            });
+            
             if (models.length === 0) {
                 new Notice('未找到可用模型');
             } else {
-                new Notice(`发现 ${models.length} 个可用模型`);
+                new Notice(`发现 ${models.length} 个可用模型，其中 ${this.selectedModels.size} 个已添加`);
             }
         } catch (error) {
             logger.error('获取模型失败:', error);
@@ -267,12 +303,58 @@ export class BulkAddModelsModal extends Modal {
     }
     
     private async saveSelectedModels() {
-        if (this.selectedModels.size === 0) return;
+        if (this.selectedModels.size === 0 && !this.availableModels.length) return;
         
         const providers: IAIProvider[] = [];
+        let existingProviders = this.plugin.settings.providers || [];
         
-        // 为每个选定的模型创建一个提供商
+        // 查找已存在的模型集合，以URL和type为匹配条件
+        const existingModelMap = new Map<string, IAIProvider>();
+        const existingModelsFiltered = existingProviders
+            .filter(p => p.type === this.providerTemplate.type && 
+                   (p.url || '') === (this.providerTemplate.url || ''));
+        
+        existingModelsFiltered.forEach(p => {
+            if (p.model) {
+                existingModelMap.set(p.model, p);
+            }
+        });
+        
+        // 记录操作数量
+        let newCount = 0;
+        let skippedCount = 0;
+        let removedCount = 0;
+        
+        // 1. 删除已取消选择的模型
+        // 获取所有此类型和URL的模型，但没有被选中的
+        const modelsToRemove = new Set<string>();
+        existingModelsFiltered.forEach(p => {
+            if (p.model && this.availableModels.includes(p.model) && !this.selectedModels.has(p.model)) {
+                modelsToRemove.add(p.model);
+            }
+        });
+        
+        // 过滤掉要删除的模型
+        if (modelsToRemove.size > 0) {
+            const idsToRemove = new Set(
+                existingModelsFiltered
+                    .filter(p => p.model && modelsToRemove.has(p.model))
+                    .map(p => p.id)
+            );
+            
+            // 从所有提供商中过滤掉要删除的
+            existingProviders = existingProviders.filter(p => !idsToRemove.has(p.id));
+            removedCount = modelsToRemove.size;
+        }
+        
+        // 2. 添加新选择的模型
         for (const model of this.selectedModels) {
+            // 如果模型已存在，跳过添加
+            if (existingModelMap.has(model)) {
+                skippedCount++;
+                continue;
+            }
+            
             const provider: IAIProvider = {
                 ...this.providerTemplate,
                 id: `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -282,11 +364,26 @@ export class BulkAddModelsModal extends Modal {
             };
             
             providers.push(provider);
+            newCount++;
         }
         
         try {
-            await this.onSave(providers);
-            new Notice(`成功添加 ${providers.length} 个模型`);
+            // 将新模型添加到现有列表中
+            existingProviders = [...existingProviders, ...providers];
+            
+            // 更新插件设置
+            this.plugin.settings.providers = existingProviders;
+            await this.plugin.saveSettings();
+            
+            // 构建提示信息
+            const messagePoints = [];
+            if (newCount > 0) messagePoints.push(`添加了 ${newCount} 个新模型`);
+            if (removedCount > 0) messagePoints.push(`移除了 ${removedCount} 个现有模型`);
+            if (skippedCount > 0) messagePoints.push(`${skippedCount} 个模型保持不变`);
+            
+            const message = messagePoints.join('，');
+            new Notice(message || '没有模型变更');
+            
             this.close();
         } catch (error) {
             logger.error('保存模型失败:', error);

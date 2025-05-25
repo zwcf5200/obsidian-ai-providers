@@ -49,10 +49,7 @@ export class AIProvidersSettingTab extends PluginSettingTab {
     private openBulkAddModal() {
         new BulkAddModelsModal(
             this.app,
-            this.plugin,
-            async (providers) => {
-                await this.saveMultipleProviders(providers);
-            }
+            this.plugin
         ).open();
     }
 

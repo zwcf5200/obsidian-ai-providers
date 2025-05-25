@@ -184,3 +184,20 @@
     width: 16px;
     height: 16px;
 }
+
+.bulk-add-model-existing {
+    background-color: var(--background-secondary);
+}
+
+.bulk-add-existing-indicator {
+    color: var(--text-accent);
+    font-weight: bold;
+    margin-right: 4px;
+}
+
+.bulk-add-description {
+    font-size: var(--font-small);
+    color: var(--text-muted);
+    margin: 8px 0;
+    font-style: italic;
+}
