@@ -5,6 +5,7 @@ import { ConfirmationModal } from './modals/ConfirmationModal';
 import { IAIProvider, IAIProvidersPluginSettings } from '@obsidian-ai-providers/sdk';
 import { logger } from './utils/logger';
 import { ProviderFormModal } from './modals/ProviderFormModal';
+import { BulkAddModelsModal } from './modals/BulkAddModelsModal';
 
 
 export const DEFAULT_SETTINGS: IAIProvidersPluginSettings = {
@@ -42,6 +43,16 @@ export class AIProvidersSettingTab extends PluginSettingTab {
                 await this.saveProvider(updatedProvider);
             },
             isAdding
+        ).open();
+    }
+    
+    private openBulkAddModal() {
+        new BulkAddModelsModal(
+            this.app,
+            this.plugin,
+            async (providers) => {
+                await this.saveMultipleProviders(providers);
+            }
         ).open();
     }
 
@@ -89,6 +100,19 @@ export class AIProvidersSettingTab extends PluginSettingTab {
         await this.plugin.saveSettings();
         this.closeForm();
     }
+    
+    async saveMultipleProviders(newProviders: IAIProvider[]) {
+        if (!newProviders || newProviders.length === 0) return;
+        
+        const providers = this.plugin.settings.providers || [];
+        
+        // 添加所有新的提供商
+        providers.push(...newProviders);
+        
+        this.plugin.settings.providers = providers;
+        await this.plugin.saveSettings();
+        this.display();
+    }
 
     async deleteProvider(provider: IAIProvider) {
         const providers = this.plugin.settings.providers || [];
@@ -130,8 +154,8 @@ export class AIProvidersSettingTab extends PluginSettingTab {
         const noticeContent = noticeEl.createDiv('ai-providers-notice-content');
         noticeContent.appendChild(sanitizeHTMLToDom(`${I18n.t('settings.notice')}`));
 
-        // Create providers section with header and add button
-        new Setting(mainInterface)
+        // Create providers section with header and add buttons
+        const providerHeaderSetting = new Setting(mainInterface)
             .setHeading()
             .setName(I18n.t('settings.configuredProviders'))
             .addButton(button => {
@@ -147,6 +171,20 @@ export class AIProvidersSettingTab extends PluginSettingTab {
                 addButton.buttonEl.setAttribute("data-testid", "add-provider-button")
                 return addButton;
             });
+            
+        // 添加批量添加模型按钮
+        providerHeaderSetting.addButton(button => {
+            const bulkAddButton = button
+                .setIcon("list-plus")
+                .setTooltip("批量添加模型")
+                .onClick(() => {
+                    this.openBulkAddModal();
+                });
+                
+            bulkAddButton.buttonEl.addClass("ai-providers-bulk-add-button");
+            bulkAddButton.buttonEl.setAttribute("aria-label", "批量添加模型");
+            return bulkAddButton;
+        });
     
 
         const providers = this.plugin.settings.providers || [];

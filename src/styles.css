@@ -112,3 +112,75 @@
     color: var(--text-accent);
     font-weight: 500;
 }
+
+/* 批量添加模型对话框样式 */
+.bulk-add-models-area {
+    margin-top: 20px;
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: 15px;
+}
+
+.bulk-add-refresh-container {
+    margin: 10px 0;
+}
+
+.bulk-add-select-container {
+    margin: 10px 0;
+    display: flex;
+    gap: 10px;
+}
+
+.bulk-add-models-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+.bulk-add-filter-container {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.bulk-add-filter-container input {
+    flex-grow: 1;
+}
+
+.bulk-add-selected-count {
+    font-weight: bold;
+    margin: 10px 0;
+    color: var(--text-accent);
+}
+
+.bulk-add-model-item {
+    padding: 5px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.bulk-add-model-item:last-child {
+    border-bottom: none;
+}
+
+.bulk-add-button-container {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* 多模型添加按钮 */
+.ai-providers-bulk-add-button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 10px;
+}
+
+.ai-providers-bulk-add-button svg {
+    width: 16px;
+    height: 16px;
+}
