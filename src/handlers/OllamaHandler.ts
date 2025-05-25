@@ -1,4 +1,4 @@
-import { IAIHandler, IAIProvider, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIProvidersPluginSettings, ITokenUsage, ReportUsageCallback } from '@obsidian-ai-providers/sdk';
+import { IAIHandler, IAIProvider, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIProvidersPluginSettings, ITokenUsage, ReportUsageCallback, IUsageMetrics } from '@obsidian-ai-providers/sdk';
 import { Ollama } from 'ollama';
 import { electronFetch } from '../utils/electronFetch';
 import { obsidianFetch } from '../utils/obsidianFetch';
@@ -240,6 +240,7 @@ export class OllamaHandler implements IAIHandler {
             const requestStartTime = Date.now();
             let fullText = '';
             let finalOllamaStats: any; // To store the final stats object from Ollama
+            let firstTokenTime: number | undefined; // 记录首字时间
 
             try {
                 const modelInfo = await this.getCachedModelInfo(
@@ -410,6 +411,10 @@ export class OllamaHandler implements IAIHandler {
                     // Extract content from message for chat API
                     const responseText = part.message?.content || '';
                     if (responseText) {
+                        // 记录首字时间
+                        if (!firstTokenTime && responseText.length > 0) {
+                            firstTokenTime = Date.now();
+                        }
                         fullText += responseText;
                         handlers.data.forEach(handler => handler(responseText, fullText));
                     }
@@ -418,7 +423,8 @@ export class OllamaHandler implements IAIHandler {
                 if (!isAborted) {
                     logger.debug('Generation completed successfully:', {
                         totalLength: fullText.length,
-                        finalStats: finalOllamaStats 
+                        finalStats: finalOllamaStats,
+                        firstTokenLatency: firstTokenTime ? firstTokenTime - requestStartTime : undefined
                     });
                     handlers.end.forEach(handler => handler(fullText));
 
@@ -431,7 +437,30 @@ export class OllamaHandler implements IAIHandler {
                             };
                             // Ollama's total_duration is in nanoseconds
                             const durationMs = finalOllamaStats.total_duration ? Math.round(finalOllamaStats.total_duration / 1_000_000) : (Date.now() - requestStartTime);
-                            reportUsage(usage, durationMs);
+                            
+                            // 记录更详细的日志，包括Ollama提供的所有时间信息
+                            logger.debug('Ollama detailed stats:', {
+                                prompt_eval_duration: finalOllamaStats.prompt_eval_duration ? Math.round(finalOllamaStats.prompt_eval_duration / 1_000_000) : undefined,
+                                eval_duration: finalOllamaStats.eval_duration ? Math.round(finalOllamaStats.eval_duration / 1_000_000) : undefined,
+                                load_duration: finalOllamaStats.load_duration ? Math.round(finalOllamaStats.load_duration / 1_000_000) : undefined,
+                                total_duration: durationMs,
+                                firstTokenLatency: firstTokenTime ? firstTokenTime - requestStartTime : undefined,
+                                prompt_eval_count: finalOllamaStats.prompt_eval_count,
+                                eval_count: finalOllamaStats.eval_count
+                            });
+                            
+                            // 创建完整的指标对象，包含原始Ollama响应中的所有性能数据
+                            const metrics: IUsageMetrics = {
+                                usage,
+                                durationMs,
+                                firstTokenLatencyMs: firstTokenTime ? firstTokenTime - requestStartTime : undefined,
+                                promptEvalDurationMs: finalOllamaStats.prompt_eval_duration ? Math.round(finalOllamaStats.prompt_eval_duration / 1_000_000) : undefined,
+                                evalDurationMs: finalOllamaStats.eval_duration ? Math.round(finalOllamaStats.eval_duration / 1_000_000) : undefined,
+                                loadDurationMs: finalOllamaStats.load_duration ? Math.round(finalOllamaStats.load_duration / 1_000_000) : undefined
+                            };
+                            
+                            // 将完整的指标对象传递给回调
+                            reportUsage(metrics);
                             logger.debug('Reported token usage:', { usage, durationMs });
                         } catch (statsError) {
                             logger.error('Error processing or reporting Ollama usage stats:', statsError, finalOllamaStats);
@@ -440,7 +469,10 @@ export class OllamaHandler implements IAIHandler {
                         // Fallback if finalOllamaStats wasn't captured but reportUsage is expected
                         const durationMs = Date.now() - requestStartTime;
                         // We don't have token counts in this case
-                        reportUsage({}, durationMs); 
+                        reportUsage({
+                            usage: {},
+                            durationMs
+                        }); 
                         logger.warn('Ollama final stats not available for usage reporting. Reporting duration only.');
                     }
                 }

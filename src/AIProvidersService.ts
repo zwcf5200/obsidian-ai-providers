@@ -1,5 +1,5 @@
 import { App, Notice } from 'obsidian';
-import { IAIProvider, IAIProvidersService, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIHandler, AIProviderType, ITokenConsumptionStats, ReportUsageCallback, ITokenUsage, AICapability } from '@obsidian-ai-providers/sdk';
+import { IAIProvider, IAIProvidersService, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIHandler, AIProviderType, ReportUsageCallback, ITokenUsage, AICapability, IUsageMetrics } from '@obsidian-ai-providers/sdk';
 import { OpenAIHandler } from './handlers/OpenAIHandler';
 import { OllamaHandler } from './handlers/OllamaHandler';
 import { TokenUsageManager } from './TokenUsageManager';
@@ -58,11 +58,9 @@ export class AIProvidersService implements IAIProvidersService {
     async execute(params: IAIProvidersExecuteParams): Promise<IChunkHandler> {
         const startTime = Date.now(); // Kept for broader context if needed
         
-        const reportUsageCallback: ReportUsageCallback = (usage: ITokenUsage, durationMs: number) => {
-            // Note: The 'durationMs' from the handler is more accurate for the API call itself.
-            // The 'startTime' in AIProviderService is for the whole execute operation.
-            // We should use the durationMs reported by the handler.
-            this.tokenUsageManager.recordUsage(usage, durationMs);
+        const reportUsageCallback: ReportUsageCallback = (metrics: IUsageMetrics) => {
+            // 只存储最后一次请求的指标，不进行统计
+            this.tokenUsageManager.recordLastRequestMetrics(params.provider.id, metrics);
         };
 
         try {
@@ -108,12 +106,9 @@ export class AIProvidersService implements IAIProvidersService {
         }
     }
 
-    getTokenConsumptionStats(): ITokenConsumptionStats {
-        return this.tokenUsageManager.getStats();
-    }
-
-    resetTokenConsumptionStats(): void {
-        this.tokenUsageManager.resetStats();
+    // 获取最后一次请求指标的方法
+    getLastRequestMetrics(providerId: string): IUsageMetrics | null {
+        return this.tokenUsageManager.getLastRequestMetrics(providerId);
     }
 
     detectCapabilities(params: IAIProvidersExecuteParams, providerType?: AIProviderType): AICapability[] {
@@ -241,14 +236,6 @@ export class AIProvidersService implements IAIProvidersService {
                         if (lowerCap === 'image-to-text' || lowerCap === 'text-to-image') mappedCapabilities.add('text_to_image');
                     });
                     
-                    // 确保至少有对话能力
-                    if (mappedCapabilities.size === 0) {
-                        mappedCapabilities.add('dialogue');
-                    }
-                    
-                    // 记录到日志
-                    logger.debug(`映射后的能力 ${provider.name}(${provider.model}): ${Array.from(mappedCapabilities).join(', ')}`);
-                    
                     return Array.from(mappedCapabilities);
                 }
             } catch (error) {
@@ -256,12 +243,7 @@ export class AIProvidersService implements IAIProvidersService {
             }
         }
         
-        // 对于非Ollama提供商或Ollama检测失败时，使用默认检测方法
-        const capabilities = this.getModelCapabilities(provider);
-        
-        // 记录到日志
-        logger.debug(`检测到模型 ${provider.name}(${provider.model}) 支持能力: ${capabilities.join(', ')}`);
-        
-        return capabilities;
+        // 默认返回基本能力
+        return this.getModelCapabilities(provider);
     }
 } 

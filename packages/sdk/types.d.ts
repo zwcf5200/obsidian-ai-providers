@@ -31,8 +31,7 @@ export interface IAIProvidersService {
     execute: (params: IAIProvidersExecuteParams) => Promise<IChunkHandler>;
     checkCompatibility: (requiredVersion: number) => void;
     migrateProvider: (provider: IAIProvider) => Promise<IAIProvider | false>;
-    getTokenConsumptionStats(): ITokenConsumptionStats;
-    resetTokenConsumptionStats(): void;
+    getLastRequestMetrics(providerId: string): IUsageMetrics | null;
     detectCapabilities(params: IAIProvidersExecuteParams, providerType?: AIProviderType): AICapability[];
     getModelCapabilities(provider: IAIProvider): AICapability[];
     detectModelCapabilities(provider: IAIProvider): Promise<AICapability[]>;
@@ -42,13 +41,6 @@ export interface ITokenUsage {
     promptTokens?: number;
     completionTokens?: number;
     totalTokens?: number;
-}
-
-export interface ITokenConsumptionStats {
-    totalPromptTokens: number;
-    totalCompletionTokens: number;
-    totalTokensConsumed: number;
-    generationSpeed?: number; // tokens per second
 }
 
 export type AICapability = 'dialogue' | 'vision' | 'tool_use' | 'text_to_image' | 'embedding';
@@ -112,7 +104,16 @@ export interface IAIProvidersEmbedParams {
     provider: IAIProvider;
 }
 
-export type ReportUsageCallback = (usage: ITokenUsage, durationMs: number) => void;
+export interface IUsageMetrics {
+    usage: ITokenUsage;
+    durationMs: number;
+    firstTokenLatencyMs?: number;
+    promptEvalDurationMs?: number;
+    evalDurationMs?: number;
+    loadDurationMs?: number;
+}
+
+export type ReportUsageCallback = (metrics: IUsageMetrics) => void;
 
 export interface IAIHandler {
     fetchModels(provider: IAIProvider): Promise<string[]>;

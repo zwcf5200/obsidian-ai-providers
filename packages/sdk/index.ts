@@ -1,5 +1,5 @@
 import { Plugin, PluginSettingTab, App, sanitizeHTMLToDom } from "obsidian";
-import { ExtendedApp, IAIProvidersService } from './types';
+import { ExtendedApp, IAIProvidersService, IUsageMetrics } from './types';
 
 const FALLBACK_TIMEOUT = 100;
 const REQUIRED_AI_PROVIDERS_VERSION = 1;
@@ -197,7 +197,7 @@ export type {
     IAIProvidersPluginSettings,
     AIProviderType,
     ITokenUsage,
-    ITokenConsumptionStats,
+    IUsageMetrics,
     ReportUsageCallback,
     AICapability,
     IModelCapabilities

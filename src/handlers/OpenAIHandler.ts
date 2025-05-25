@@ -1,4 +1,4 @@
-import { IAIHandler, IAIProvider, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIProvidersPluginSettings, ITokenUsage, ReportUsageCallback } from '@obsidian-ai-providers/sdk';
+import { IAIHandler, IAIProvider, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIProvidersPluginSettings, ITokenUsage, ReportUsageCallback, IUsageMetrics } from '@obsidian-ai-providers/sdk';
 import { electronFetch } from '../utils/electronFetch';
 import OpenAI from 'openai';
 import { obsidianFetch } from '../utils/obsidianFetch';
@@ -122,6 +122,7 @@ export class OpenAIHandler implements IAIHandler {
             
             const requestStartTime = Date.now();
             let lastChunkUsage: OpenAI.CompletionUsage | undefined;
+            let firstTokenTime: number | undefined; // 记录首字时间
         
             try {
                 const response = await openai.chat.completions.create({
@@ -137,6 +138,10 @@ export class OpenAIHandler implements IAIHandler {
                     if (isAborted) break;
                     const content = chunk.choices[0]?.delta?.content;
                     if (content) {
+                        // 记录首字时间
+                        if (!firstTokenTime && content.length > 0) {
+                            firstTokenTime = Date.now();
+                        }
                         fullText += content;
                         handlers.data.forEach(handler => handler(content, fullText));
                     }
@@ -153,7 +158,25 @@ export class OpenAIHandler implements IAIHandler {
                             totalTokens: lastChunkUsage.total_tokens,
                         };
                         const durationMs = Date.now() - requestStartTime;
-                        reportUsage(usage, durationMs);
+                        
+                        // 创建完整的指标对象
+                        const metrics: IUsageMetrics = {
+                            usage,
+                            durationMs,
+                            firstTokenLatencyMs: firstTokenTime ? firstTokenTime - requestStartTime : undefined
+                        };
+                        
+                        // 记录详细日志
+                        logger.debug('OpenAI detailed stats:', {
+                            prompt_tokens: lastChunkUsage.prompt_tokens,
+                            completion_tokens: lastChunkUsage.completion_tokens,
+                            total_tokens: lastChunkUsage.total_tokens,
+                            duration_ms: durationMs,
+                            firstTokenLatency: firstTokenTime ? firstTokenTime - requestStartTime : undefined
+                        });
+                        
+                        // 将完整的指标对象传递给回调
+                        reportUsage(metrics);
                     }
                 }
             } catch (error) {
