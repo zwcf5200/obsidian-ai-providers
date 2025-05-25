@@ -69,3 +69,46 @@
 .ai-providers-main-interface .setting-item-description {
     max-width: 100%;
 }
+
+/* 能力指示器样式 */
+.ai-providers-capabilities-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.ai-providers-capability-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: var(--radius-s);
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    font-size: var(--font-smallest);
+    white-space: nowrap;
+}
+
+.ai-providers-capability-icon {
+    margin-right: 4px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.ai-providers-capability-icon svg {
+    width: 12px;
+    height: 12px;
+    fill: var(--text-on-accent);
+}
+
+.ai-providers-capability-label {
+    font-weight: 500;
+}
+
+/* 能力配置弹窗样式 */
+.ai-providers-capabilities {
+    margin-top: 4px;
+    font-size: var(--font-small);
+    color: var(--text-accent);
+    font-weight: 500;
+}

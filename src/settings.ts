@@ -169,6 +169,36 @@ export class AIProvidersSettingTab extends PluginSettingTab {
                     setting.nameEl.after(modelPill as any);
                 }
 
+                // 添加能力指示器
+                if ((provider as any).userDefinedCapabilities && (provider as any).userDefinedCapabilities.length > 0) {
+                    const capabilitiesEl = setting.settingEl.createDiv('ai-providers-capabilities-container');
+                    
+                    const capabilityLabels: Record<string, string> = {
+                        'dialogue': '对话',
+                        'vision': '视觉',
+                        'tool_use': '工具',
+                        'text_to_image': '文生图',
+                        'embedding': '嵌入'
+                    };
+                    
+                    const capabilityIcons: Record<string, string> = {
+                        'dialogue': 'message-square',
+                        'vision': 'image',
+                        'tool_use': 'tool',
+                        'text_to_image': 'image-plus',
+                        'embedding': 'box'
+                    };
+                    
+                    (provider as any).userDefinedCapabilities.forEach((cap: string) => {
+                        const pill = capabilitiesEl.createDiv('ai-providers-capability-pill');
+                        const iconSpan = pill.createSpan('ai-providers-capability-icon');
+                        setIcon(iconSpan, capabilityIcons[cap] || 'check');
+                        pill.createSpan('ai-providers-capability-label').setText(capabilityLabels[cap] || cap);
+                    });
+                    
+                    setting.descEl.after(capabilitiesEl as any);
+                }
+
                 setting
                     .addExtraButton(button => {
                         button

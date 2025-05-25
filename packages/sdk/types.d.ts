@@ -13,6 +13,7 @@ export interface IAIProvider {
     type: AIProviderType;
     model?: string;
     availableModels?: string[];
+    userDefinedCapabilities?: AICapability[];
 }
 
 export interface IChunkHandler {
@@ -34,6 +35,7 @@ export interface IAIProvidersService {
     resetTokenConsumptionStats(): void;
     detectCapabilities(params: IAIProvidersExecuteParams, providerType?: AIProviderType): AICapability[];
     getModelCapabilities(provider: IAIProvider): AICapability[];
+    detectModelCapabilities(provider: IAIProvider): Promise<AICapability[]>;
 }
 
 export interface ITokenUsage {

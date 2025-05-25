@@ -1,8 +1,9 @@
 import { App, Modal, Setting, Notice, sanitizeHTMLToDom } from 'obsidian';
 import { I18n } from '../i18n';
-import { IAIProvider, AIProviderType } from '@obsidian-ai-providers/sdk';
+import { IAIProvider, AIProviderType, AICapability } from '@obsidian-ai-providers/sdk';
 import { logger } from '../utils/logger';
 import AIProvidersPlugin from '../main';
+import { CapabilitiesConfigModal } from './CapabilitiesConfigModal';
 
 export class ProviderFormModal extends Modal {
     private isLoadingModels = false;
@@ -192,6 +193,35 @@ export class ProviderFormModal extends Modal {
 
         this.createModelSetting(contentEl);
 
+        // 添加模型能力配置
+        const capabilitiesSetting = new Setting(contentEl)
+            .setName('模型能力')
+            .setDesc('配置此模型支持的能力（对话、视觉、工具使用等）');
+
+        // 添加当前能力显示
+        const capabilitiesDesc = capabilitiesSetting.descEl.createEl('div');
+        capabilitiesDesc.addClass('ai-providers-capabilities');
+        capabilitiesDesc.setText(`当前能力: ${this.getCapabilitiesDisplayText()}`);
+
+        capabilitiesSetting.addButton(button => {
+            button
+                .setButtonText('配置能力')
+                .onClick(() => {
+                    new CapabilitiesConfigModal(
+                        this.app, 
+                        this.provider as any, 
+                        (capabilities: AICapability[]) => {
+                            (this.provider as any).userDefinedCapabilities = capabilities;
+                            // 更新显示
+                            capabilitiesDesc.setText(`当前能力: ${this.getCapabilitiesDisplayText()}`);
+                            new Notice(`已为 ${this.provider.name} 配置 ${capabilities.length} 项能力`);
+                        },
+                        this.plugin.aiProviders
+                    ).open();
+                });
+            return button;
+        });
+
         new Setting(contentEl)
             .addButton(button => button
                 .setButtonText(I18n.t('settings.save'))
@@ -220,5 +250,22 @@ export class ProviderFormModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         this.onOpen();
+    }
+
+    private getCapabilitiesDisplayText(): string {
+        const capabilities = (this.provider as any).userDefinedCapabilities as AICapability[] | undefined;
+        if (!capabilities || capabilities.length === 0) {
+            return '未配置';
+        }
+
+        const capabilityLabels: Record<AICapability, string> = {
+            'dialogue': '对话',
+            'vision': '视觉',
+            'tool_use': '工具使用',
+            'text_to_image': '文生图',
+            'embedding': '嵌入向量'
+        };
+
+        return capabilities.map(c => capabilityLabels[c]).join(', ');
     }
 } 

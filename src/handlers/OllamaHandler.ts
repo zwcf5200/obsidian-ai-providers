@@ -5,7 +5,12 @@ import { obsidianFetch } from '../utils/obsidianFetch';
 import { logger } from '../utils/logger';
 
 // Extend ChatResponse type
+// Without this, we cannot reuse typing for extensions
 interface ExtendedChatResponse {
+    response: string;
+    done: boolean;
+    context?: number[];
+    created_at?: string;
     message?: {
         content?: string;
     }
@@ -21,9 +26,9 @@ interface ModelInfo {
     lastContextLength: number;
 }
 
-const SYMBOLS_PER_TOKEN = 2.5;
 const DEFAULT_CONTEXT_LENGTH = 2048;
 const EMBEDDING_CONTEXT_LENGTH = 2048;
+const SYMBOLS_PER_TOKEN = 2.5;
 const CONTEXT_BUFFER_MULTIPLIER = 1.2; // 20% buffer
 
 export class OllamaHandler implements IAIHandler {
@@ -221,7 +226,7 @@ export class OllamaHandler implements IAIHandler {
             })
         );
         let isAborted = false;
-        let response: AsyncIterable<ExtendedChatResponse> | null = null;
+        let response: any = null;
         
         const handlers = {
             data: [] as ((chunk: string, accumulatedText: string) => void)[],
@@ -387,6 +392,10 @@ export class OllamaHandler implements IAIHandler {
                     options: Object.keys(requestOptions).length > 0 ? requestOptions : undefined
                 } as any); // Type assertion for compatibility
 
+                if (!response) {
+                    throw new Error('No response from Ollama');
+                }
+
                 for await (const part of response) {
                     if (isAborted) {
                         logger.debug('Generation aborted');
@@ -456,5 +465,73 @@ export class OllamaHandler implements IAIHandler {
                 controller.abort();
             }
         };
+    }
+
+    // 添加一个方法来获取模型能力
+    async detectModelCapabilities(provider: IAIProvider, modelName: string): Promise<string[]> {
+        logger.debug('Detecting Ollama model capabilities for:', modelName);
+        
+        const ollama = this.getClient(provider, this.settings.useNativeFetch ? fetch : obsidianFetch);
+        try {
+            const response = await ollama.show({ model: modelName });
+            logger.debug('Ollama show response:', response);
+            
+            // 使用类型断言访问capabilities字段
+            const anyResponse = response as any;
+            
+            // 直接从capabilities字段提取能力
+            if (anyResponse.capabilities && Array.isArray(anyResponse.capabilities)) {
+                logger.debug('Detected capabilities from Ollama:', anyResponse.capabilities);
+                return anyResponse.capabilities;
+            }
+            
+            // 如果没有明确的capabilities字段，尝试从其他信息推断
+            const capabilities: string[] = [];
+            
+            // 检查架构类型来推断能力
+            if (response.details?.family) {
+                const family = response.details.family.toLowerCase();
+                if (family.includes('bert') || family.includes('bge')) {
+                    capabilities.push('embedding');
+                }
+                if (family.includes('llava') || family.includes('clip') || family.includes('vision')) {
+                    capabilities.push('vision');
+                }
+            }
+            
+            // 从模型信息中搜索关键字
+            if (response.template) {
+                if (response.template.includes('vision') || response.template.includes('image')) {
+                    capabilities.push('vision');
+                }
+                if (response.template.includes('embedding')) {
+                    capabilities.push('embedding');
+                }
+            }
+            
+            // 从模型名称推断
+            const modelNameLower = modelName.toLowerCase();
+            if (modelNameLower.includes('vision') || 
+                modelNameLower.includes('llava') || 
+                modelNameLower.includes('clip') || 
+                modelNameLower.includes('image')) {
+                capabilities.push('vision');
+            }
+            if (modelNameLower.includes('embed') || 
+                modelNameLower.includes('bge') || 
+                modelNameLower.includes('bert')) {
+                capabilities.push('embedding');
+            }
+            
+            // 所有Ollama模型都支持对话能力
+            capabilities.push('dialogue');
+            
+            // 去重
+            return [...new Set(capabilities)];
+        } catch (error) {
+            logger.error('Failed to detect Ollama model capabilities:', error);
+            // 默认返回对话能力
+            return ['dialogue'];
+        }
     }
 } 
