@@ -517,49 +517,8 @@ export class OllamaHandler implements IAIHandler {
                 return anyResponse.capabilities;
             }
             
-            // 如果没有明确的capabilities字段，尝试从其他信息推断
-            const capabilities: string[] = [];
-            
-            // 检查架构类型来推断能力
-            if (response.details?.family) {
-                const family = response.details.family.toLowerCase();
-                if (family.includes('bert') || family.includes('bge')) {
-                    capabilities.push('embedding');
-                }
-                if (family.includes('llava') || family.includes('clip') || family.includes('vision')) {
-                    capabilities.push('vision');
-                }
-            }
-            
-            // 从模型信息中搜索关键字
-            if (response.template) {
-                if (response.template.includes('vision') || response.template.includes('image')) {
-                    capabilities.push('vision');
-                }
-                if (response.template.includes('embedding')) {
-                    capabilities.push('embedding');
-                }
-            }
-            
-            // 从模型名称推断
-            const modelNameLower = modelName.toLowerCase();
-            if (modelNameLower.includes('vision') || 
-                modelNameLower.includes('llava') || 
-                modelNameLower.includes('clip') || 
-                modelNameLower.includes('image')) {
-                capabilities.push('vision');
-            }
-            if (modelNameLower.includes('embed') || 
-                modelNameLower.includes('bge') || 
-                modelNameLower.includes('bert')) {
-                capabilities.push('embedding');
-            }
-            
-            // 所有Ollama模型都支持对话能力
-            capabilities.push('dialogue');
-            
-            // 去重
-            return [...new Set(capabilities)];
+            // 如果没有明确的capabilities字段，则返回未知
+            return ['unknown'];
         } catch (error) {
             logger.error('Failed to detect Ollama model capabilities:', error);
             // 默认返回对话能力

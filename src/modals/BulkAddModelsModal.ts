@@ -10,6 +10,8 @@ export class BulkAddModelsModal extends Modal {
     private availableModels: string[] = [];
     private toggleComponents: Map<string, ToggleComponent> = new Map();
     private providerTemplate: IAIProvider;
+    // 添加模型能力存储
+    private modelCapabilities: Map<string, string[]> = new Map();
     
     // 统一的提供商类型标签定义
     private readonly providerTypeLabels: Record<string, string> = {
@@ -37,7 +39,8 @@ export class BulkAddModelsModal extends Modal {
         'vision': '视觉',
         'tool_use': '工具',
         'text_to_image': '文生图',
-        'embedding': '嵌入'
+        'embedding': '嵌入',
+        'unknown': '未知'
     };
     
     // 统一的能力图标
@@ -46,12 +49,13 @@ export class BulkAddModelsModal extends Modal {
         'vision': 'image',
         'tool_use': 'tool',
         'text_to_image': 'image-plus',
-        'embedding': 'box'
+        'embedding': 'box',
+        'unknown': 'help-circle'
     };
     
     private readonly defaultProvidersUrls = {
         openai: "https://api.openai.com/v1",
-        ollama: "http://localhost:11434",
+        ollama: "http://localhost:30100",
         gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
         openrouter: "https://openrouter.ai/api/v1",
         lmstudio: "http://localhost:1234/v1",
@@ -298,28 +302,66 @@ export class BulkAddModelsModal extends Modal {
             
             const setting = new Setting(modelItemEl);
             
+            // 创建模型名称和能力显示区域
+            const nameContainer = setting.nameEl.createDiv('bulk-add-model-name-container');
+            
             // 为已添加的模型添加标记
             if (isExistingModel) {
-                const nameEl = setting.nameEl.createSpan('bulk-add-existing-indicator');
+                const nameEl = nameContainer.createSpan('bulk-add-existing-indicator');
                 nameEl.textContent = '[已添加] ';
                 nameEl.setAttr('title', '此模型已添加到配置中');
             }
             
-            setting.setName(model)
-                .addToggle(toggle => {
-                    toggle.setValue(this.selectedModels.has(model))
-                        .onChange(value => {
-                            if (value) {
-                                this.selectedModels.add(model);
-                            } else {
-                                this.selectedModels.delete(model);
-                            }
-                            countElement.textContent = `已选择 ${this.selectedModels.size} 个模型`;
-                        });
-                    
-                    this.toggleComponents.set(model, toggle);
-                    return toggle;
-                });
+            // 模型名称
+            const modelNameEl = nameContainer.createSpan('bulk-add-model-name');
+            modelNameEl.textContent = model;
+            
+            // 能力图标容器
+            const capabilitiesContainer = nameContainer.createDiv('ai-providers-capabilities-container');
+            this.renderModelCapabilities(capabilitiesContainer, model);
+            
+            setting.addToggle(toggle => {
+                toggle.setValue(this.selectedModels.has(model))
+                    .onChange(value => {
+                        if (value) {
+                            this.selectedModels.add(model);
+                        } else {
+                            this.selectedModels.delete(model);
+                        }
+                        countElement.textContent = `已选择 ${this.selectedModels.size} 个模型`;
+                    });
+                
+                this.toggleComponents.set(model, toggle);
+                return toggle;
+            });
+        });
+    }
+    
+    /**
+     * 渲染模型能力图标
+     */
+    private renderModelCapabilities(container: HTMLElement, modelName: string): void {
+        const capabilities = this.modelCapabilities.get(modelName) || ['unknown'];
+        
+        capabilities.forEach(capability => {
+            const capabilityPill = container.createDiv('ai-providers-capability-pill');
+            
+            // 为未知能力添加特殊样式类
+            if (capability === 'unknown') {
+                capabilityPill.addClass('ai-providers-capability-unknown');
+            }
+            
+            // 能力图标
+            const iconContainer = capabilityPill.createDiv('ai-providers-capability-icon');
+            const iconName = this.capabilityIcons[capability] || 'help-circle';
+            setIcon(iconContainer, iconName);
+            
+            // 能力标签
+            const labelEl = capabilityPill.createSpan('ai-providers-capability-label');
+            labelEl.textContent = this.capabilityLabels[capability] || capability;
+            
+            // 设置提示信息
+            capabilityPill.setAttr('title', `${this.capabilityLabels[capability] || capability}能力`);
         });
     }
     
@@ -357,8 +399,9 @@ export class BulkAddModelsModal extends Modal {
             // 保存之前已选择的模型列表
             const previouslySelected = new Set(this.selectedModels);
             
-            // 清空模型列表
+            // 清空模型列表和能力缓存
             this.availableModels = [];
+            this.modelCapabilities.clear();
             this.toggleComponents.clear();
             
             // 创建临时提供商对象用于获取模型列表
@@ -390,10 +433,13 @@ export class BulkAddModelsModal extends Modal {
                 }
             });
             
+            // 批量检测模型能力
+            await this.detectModelsCapabilities(tempProvider, models);
+            
             if (models.length === 0) {
                 new Notice('未找到可用模型');
             } else {
-                new Notice(`发现 ${models.length} 个可用模型，其中 ${this.selectedModels.size} 个已添加`);
+                new Notice(`发现 ${models.length} 个可用模型，其中 ${this.selectedModels.size} 个已添加，已完成能力检测`);
             }
         } catch (error) {
             logger.error('获取模型失败:', error);
@@ -450,44 +496,7 @@ export class BulkAddModelsModal extends Modal {
         }
         
         // 预先获取这批模型的能力类型
-        // 为了优化性能，我们只需要查询一次能力
-        const modelCapabilities = new Map<string, any>();
-        
-        // 如果是ollama类型，我们可以使用ollamaHandler获取准确的能力信息
-        if (this.providerTemplate.type === 'ollama' && this.selectedModels.size > 0) {
-            try {
-                // 获取Ollama处理器
-                // @ts-ignore - 直接访问内部处理器
-                const ollamaHandler = this.plugin.aiProviders?.handlers?.ollama;
-                
-                // 为效率起见，只对一个模型进行能力检测，然后应用到所有同类型的模型
-                const sampleModel = Array.from(this.selectedModels)[0];
-                if (sampleModel && ollamaHandler && typeof (ollamaHandler as any).detectModelCapabilities === 'function') {
-                    const sampleProvider = { 
-                        ...this.providerTemplate, 
-                        model: sampleModel,
-                        id: 'temp'
-                    };
-                    
-                    // 检测能力
-                    const ollamaCapabilities = await (ollamaHandler as any).detectModelCapabilities(sampleProvider, sampleModel);
-                    
-                    // 映射能力
-                    if (ollamaCapabilities && ollamaCapabilities.length > 0) {
-                        const mappedCapabilities = this.mapModelCapabilities(ollamaCapabilities);
-                        
-                        // 存储映射后的能力
-                        this.selectedModels.forEach(model => {
-                            modelCapabilities.set(model, mappedCapabilities);
-                        });
-                        
-                        logger.debug(`自动检测到 ${sampleModel} 的能力: ${mappedCapabilities.join(', ')}`);
-                    }
-                }
-            } catch (error) {
-                logger.error('自动检测模型能力失败:', error);
-            }
-        }
+        // 直接使用之前检测好的能力信息，不重复检测
         
         // 2. 添加新选择的模型
         for (const model of this.selectedModels) {
@@ -497,9 +506,8 @@ export class BulkAddModelsModal extends Modal {
                 continue;
             }
             
-            // 获取能力配置
-            const capabilities = modelCapabilities.has(model) ? 
-                modelCapabilities.get(model) : undefined;
+            // 获取能力配置（使用之前检测的结果）
+            const capabilities = this.modelCapabilities.get(model);
                 
             // 创建新的提供商对象
             const provider = this.createProviderObject(model, capabilities);
@@ -551,11 +559,7 @@ export class BulkAddModelsModal extends Modal {
             }
         });
         
-        // 确保至少有对话能力
-        if (mappedCapabilities.size === 0) {
-            mappedCapabilities.add('dialogue');
-        }
-        
+        // 如果没有识别到任何能力，返回空数组，让调用方处理
         return Array.from(mappedCapabilities);
     }
 
@@ -612,6 +616,7 @@ export class BulkAddModelsModal extends Modal {
         // 清空模型和选择
         this.availableModels = [];
         this.selectedModels.clear();
+        this.modelCapabilities.clear();
         this.toggleComponents.clear();
         
         // 标记正在加载状态
@@ -648,8 +653,11 @@ export class BulkAddModelsModal extends Modal {
                         }
                     });
                     
+                    // 检测模型能力
+                    await this.detectModelsCapabilities(tempProvider, models);
+                    
                     if (models.length > 0) {
-                        new Notice(`已加载 ${models.length} 个可用模型，其中 ${this.selectedModels.size} 个已添加`);
+                        new Notice(`已加载 ${models.length} 个可用模型，其中 ${this.selectedModels.size} 个已添加，已完成能力检测`);
                     }
                     
                 } catch (error) {
@@ -658,7 +666,15 @@ export class BulkAddModelsModal extends Modal {
                     this.availableModels = Array.from(new Set(currentGroupProviders.map(p => p.model).filter(Boolean) as string[]));
                     this.availableModels.forEach(model => this.selectedModels.add(model));
                     
-                    new Notice(`无法获取完整模型列表，已加载 ${this.availableModels.length} 个现有模型`);
+                    // 对现有模型也进行能力检测
+                    const tempProvider: IAIProvider = {
+                        ...this.providerTemplate,
+                        id: `temp-${Date.now()}`,
+                        name: 'Temporary Provider'
+                    };
+                    await this.detectModelsCapabilities(tempProvider, this.availableModels);
+                    
+                    new Notice(`无法获取完整模型列表，已加载 ${this.availableModels.length} 个现有模型并完成能力检测`);
                 }
             }
         } catch (error) {
@@ -699,5 +715,79 @@ export class BulkAddModelsModal extends Modal {
         }
         
         return newProvider;
+    }
+
+    /**
+     * 批量检测模型能力
+     * 针对不同提供商类型使用不同的检测策略
+     */
+    private async detectModelsCapabilities(provider: IAIProvider, models: string[]): Promise<void> {
+        if (models.length === 0) return;
+        
+        logger.debug(`开始检测 ${provider.type} 提供商的 ${models.length} 个模型能力`);
+        
+        try {
+            if (provider.type === 'ollama') {
+                await this.detectOllamaCapabilities(provider, models);
+            } else {
+                // 其他提供商统一设置为未知
+                this.setUnknownCapabilities(models);
+            }
+        } catch (error) {
+            logger.error(`检测 ${provider.type} 模型能力失败:`, error);
+            // 如果检测失败，为所有模型设置未知能力
+            this.setUnknownCapabilities(models);
+        }
+    }
+    
+    /**
+     * 设置模型能力为未知
+     */
+    private setUnknownCapabilities(models: string[]): void {
+        models.forEach(model => {
+            this.modelCapabilities.set(model, ['unknown']);
+        });
+    }
+    
+    /**
+     * 检测Ollama模型能力
+     */
+    private async detectOllamaCapabilities(provider: IAIProvider, models: string[]): Promise<void> {
+        // 获取Ollama处理器
+        // @ts-ignore - 直接访问内部处理器
+        const ollamaHandler = this.plugin.aiProviders?.handlers?.ollama;
+        
+        if (!ollamaHandler || typeof (ollamaHandler as any).detectModelCapabilities !== 'function') {
+            logger.warn('Ollama处理器不可用，设置为未知能力');
+            this.setUnknownCapabilities(models);
+            return;
+        }
+        
+        // 逐个检测每个模型的能力
+        for (const model of models) {
+            try {
+                const tempProvider = { ...provider, model, id: 'temp' };
+                const ollamaCapabilities = await (ollamaHandler as any).detectModelCapabilities(tempProvider, model);
+                
+                if (ollamaCapabilities && ollamaCapabilities.length > 0) {
+                    const mappedCapabilities = this.mapModelCapabilities(ollamaCapabilities);
+                    
+                    // 如果映射成功，使用映射的能力；否则设置为未知
+                    if (mappedCapabilities.length > 0) {
+                        this.modelCapabilities.set(model, mappedCapabilities);
+                        logger.debug(`检测到 ${model} 的能力:`, mappedCapabilities);
+                    } else {
+                        this.modelCapabilities.set(model, ['unknown']);
+                        logger.debug(`${model} 检测到能力但无法映射，设置为未知`);
+                    }
+                } else {
+                    this.modelCapabilities.set(model, ['unknown']);
+                    logger.debug(`${model} 未检测到能力，设置为未知`);
+                }
+            } catch (error) {
+                logger.warn(`检测 ${model} 能力失败:`, error);
+                this.modelCapabilities.set(model, ['unknown']);
+            }
+        }
     }
 } 

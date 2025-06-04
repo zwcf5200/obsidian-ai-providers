@@ -181,6 +181,45 @@
     border-bottom: none;
 }
 
+/* 模型名称和能力显示容器 */
+.bulk-add-model-name-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bulk-add-model-name {
+    font-weight: 500;
+    color: var(--text-normal);
+}
+
+/* 调整模型项中的能力容器样式 */
+.bulk-add-model-item .ai-providers-capabilities-container {
+    margin-top: 2px;
+    gap: 3px;
+}
+
+.bulk-add-model-item .ai-providers-capability-pill {
+    padding: 1px 4px;
+    font-size: 10px;
+    border-radius: 3px;
+}
+
+/* 未知能力的特殊样式 */
+.bulk-add-model-item .ai-providers-capability-unknown {
+    background-color: var(--background-modifier-border) !important;
+    color: var(--text-muted) !important;
+}
+
+.bulk-add-model-item .ai-providers-capability-unknown svg {
+    fill: var(--text-muted) !important;
+}
+
+.bulk-add-model-item .ai-providers-capability-icon svg {
+    width: 10px;
+    height: 10px;
+}
+
 .bulk-add-button-container {
     margin-top: 20px;
     display: flex;
@@ -188,6 +227,24 @@
     gap: 10px;
     padding-top: 15px;
     border-top: 1px solid var(--background-modifier-border);
+}
+
+.bulk-add-model-existing {
+    background-color: var(--background-primary-alt);
+    border-left: 3px solid var(--interactive-accent);
+}
+
+.bulk-add-existing-indicator {
+    color: var(--interactive-accent);
+    font-weight: 600;
+    font-size: var(--font-smallest);
+}
+
+.bulk-add-description {
+    color: var(--text-muted);
+    font-size: var(--font-small);
+    margin-bottom: 10px;
+    line-height: 1.4;
 }
 
 /* 多模型添加按钮 */
@@ -201,27 +258,6 @@
 .ai-providers-bulk-add-button svg {
     width: 16px;
     height: 16px;
-}
-
-.bulk-add-model-existing {
-    background-color: var(--background-modifier-success-hover);
-}
-
-.bulk-add-existing-indicator {
-    color: var(--text-success);
-    font-weight: bold;
-    margin-right: 4px;
-}
-
-.bulk-add-description {
-    font-size: var(--font-small);
-    color: var(--text-muted);
-    margin: 8px 0;
-    font-style: italic;
-    background-color: var(--background-secondary-alt);
-    padding: 8px;
-    border-radius: 4px;
-    border-left: 3px solid var(--text-accent);
 }
 
 /* 提供商分组样式 */
