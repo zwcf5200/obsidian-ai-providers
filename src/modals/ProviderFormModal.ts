@@ -1,6 +1,6 @@
 import { App, Modal, Setting, Notice, sanitizeHTMLToDom } from 'obsidian';
 import { I18n } from '../i18n';
-import { IAIProvider, AIProviderType, AICapability } from '@obsidian-ai-providers/sdk';
+import { IAIProvider, AIProviderType, AICapability } from '../../packages/sdk/index';
 import { logger } from '../utils/logger';
 import AIProvidersPlugin from '../main';
 import { CapabilitiesConfigModal } from './CapabilitiesConfigModal';

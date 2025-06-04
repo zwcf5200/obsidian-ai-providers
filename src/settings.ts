@@ -2,7 +2,7 @@ import {App, PluginSettingTab, sanitizeHTMLToDom, Setting, setIcon} from 'obsidi
 import AIProvidersPlugin from './main';
 import { I18n } from './i18n';
 import { ConfirmationModal } from './modals/ConfirmationModal';
-import { IAIProvider, IAIProvidersPluginSettings, AIProviderType } from '@obsidian-ai-providers/sdk';
+import { IAIProvider, IAIProvidersPluginSettings, AIProviderType } from '../packages/sdk/index';
 import { logger } from './utils/logger';
 import { ProviderFormModal } from './modals/ProviderFormModal';
 import { BulkAddModelsModal } from './modals/BulkAddModelsModal';

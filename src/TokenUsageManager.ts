@@ -1,4 +1,4 @@
-import { IUsageMetrics } from "@obsidian-ai-providers/sdk";
+import { IUsageMetrics } from "../packages/sdk/index";
 
 export class TokenUsageManager {
     // 只保留最后一次请求指标的存储，按providerId索引

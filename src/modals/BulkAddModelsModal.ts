@@ -1,5 +1,5 @@
 import { App, Modal, Setting, Notice, setIcon, ToggleComponent } from 'obsidian';
-import { IAIProvider, AIProviderType } from '@obsidian-ai-providers/sdk';
+import { IAIProvider, AIProviderType } from '../../packages/sdk/index';
 import { logger } from '../utils/logger';
 import AIProvidersPlugin from '../main';
 import { I18n } from '../i18n';

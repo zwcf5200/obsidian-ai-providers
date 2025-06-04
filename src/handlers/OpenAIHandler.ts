@@ -1,4 +1,4 @@
-import { IAIHandler, IAIProvider, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIProvidersPluginSettings, ITokenUsage, ReportUsageCallback, IUsageMetrics } from '@obsidian-ai-providers/sdk';
+import { IAIHandler, IAIProvider, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIProvidersPluginSettings, ITokenUsage, ReportUsageCallback, IUsageMetrics } from '../../packages/sdk/index';
 import { electronFetch } from '../utils/electronFetch';
 import OpenAI from 'openai';
 import { obsidianFetch } from '../utils/obsidianFetch';

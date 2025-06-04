@@ -1,4 +1,4 @@
-import { IAIHandler, IAIProvider, IChunkHandler, IAIProvidersExecuteParams, IAIProvidersEmbedParams } from '@obsidian-ai-providers/sdk';
+import { IAIHandler, IAIProvider, IChunkHandler, IAIProvidersExecuteParams, IAIProvidersEmbedParams } from '../packages/sdk/index';
 
 export type IMockResponse = {
     choices: Array<{

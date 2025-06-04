@@ -1,5 +1,5 @@
 import { App, Notice } from 'obsidian';
-import { IAIProvider, IAIProvidersService, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIHandler, AIProviderType, ReportUsageCallback, ITokenUsage, AICapability, IUsageMetrics } from '@obsidian-ai-providers/sdk';
+import { IAIProvider, IAIProvidersService, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIHandler, AIProviderType, ReportUsageCallback, ITokenUsage, AICapability, IUsageMetrics } from '../packages/sdk/index';
 import { OpenAIHandler } from './handlers/OpenAIHandler';
 import { OllamaHandler } from './handlers/OllamaHandler';
 import { TokenUsageManager } from './TokenUsageManager';

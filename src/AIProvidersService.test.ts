@@ -2,7 +2,7 @@ import { AIProvidersService } from './AIProvidersService';
 import { TokenUsageManager } from './TokenUsageManager';
 import { App } from 'obsidian';
 import AIProvidersPlugin from './main';
-import { IAIProvider, IUsageMetrics } from '@obsidian-ai-providers/sdk';
+import { IAIProvider, IUsageMetrics } from '../packages/sdk/index';
 
 // Mock TokenUsageManager
 jest.mock('./TokenUsageManager');

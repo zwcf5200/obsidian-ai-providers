@@ -1,5 +1,5 @@
 import { App, Modal, Setting, Notice } from 'obsidian';
-import { AICapability, IAIProvider } from '@obsidian-ai-providers/sdk';
+import { AICapability, IAIProvider } from '../../packages/sdk/index';
 import { I18n } from '../i18n';
 import { logger } from '../utils/logger';
 

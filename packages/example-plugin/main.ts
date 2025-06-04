@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
-import { initAI, waitForAI } from '@obsidian-ai-providers/sdk';
+import { initAI, waitForAI } from '../packages/sdk/index';
 
 interface AIProvidersExampleSettings {
 	mySetting: string;

@@ -1,5 +1,5 @@
 import { TokenUsageManager } from './TokenUsageManager';
-import { IUsageMetrics } from '@obsidian-ai-providers/sdk';
+import { IUsageMetrics } from '../packages/sdk/index';
 
 describe('TokenUsageManager', () => {
     describe('lastRequestMetrics', () => {

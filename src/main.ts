@@ -1,5 +1,5 @@
 import { Plugin, addIcon } from 'obsidian';
-import { IAIProvidersPluginSettings } from '@obsidian-ai-providers/sdk';
+import { IAIProvidersPluginSettings } from '../packages/sdk/index';
 import { DEFAULT_SETTINGS, AIProvidersSettingTab } from './settings';
 import { AIProvidersService } from './AIProvidersService';
 import { logger } from './utils/logger';
