@@ -39,7 +39,7 @@
 		"openai": "4.73.1"
 	},
 	"devDependencies": {
-		"@obsidian-ai-providers/sdk": "^1.1.1",
+		"@obsidian-ai-providers/sdk": "file:./packages/sdk",
 		"@testing-library/jest-dom": "6.4.2",
 		"@types/jest": "29.5.12",
 		"@types/node": "16.11.6",
