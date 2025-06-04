@@ -472,6 +472,7 @@ export class BulkAddModelsModal extends Modal {
         let newCount = 0;
         let skippedCount = 0;
         let removedCount = 0;
+        let updatedCount = 0; // 添加更新计数
         
         // 1. 删除已取消选择的模型
         // 获取所有此类型和URL的模型，但没有被选中的
@@ -495,25 +496,43 @@ export class BulkAddModelsModal extends Modal {
             removedCount = modelsToRemove.size;
         }
         
-        // 预先获取这批模型的能力类型
-        // 直接使用之前检测好的能力信息，不重复检测
-        
-        // 2. 添加新选择的模型
+        // 2. 处理选中的模型（添加新模型或更新现有模型的能力）
         for (const model of this.selectedModels) {
-            // 如果模型已存在，跳过添加
-            if (existingModelMap.has(model)) {
-                skippedCount++;
-                continue;
-            }
-            
-            // 获取能力配置（使用之前检测的结果）
             const capabilities = this.modelCapabilities.get(model);
-                
-            // 创建新的提供商对象
-            const provider = this.createProviderObject(model, capabilities);
             
-            providers.push(provider);
-            newCount++;
+            if (existingModelMap.has(model)) {
+                // 现有模型：更新能力信息
+                const existingProvider = existingModelMap.get(model)!;
+                const existingCapabilities = (existingProvider as any).userDefinedCapabilities;
+                
+                // 检查能力是否有变化
+                const capabilitiesChanged = JSON.stringify(existingCapabilities) !== JSON.stringify(capabilities);
+                
+                if (capabilitiesChanged) {
+                    // 在现有提供商列表中找到并更新这个模型
+                    const providerIndex = existingProviders.findIndex(p => p.id === existingProvider.id);
+                    if (providerIndex !== -1) {
+                        // 创建更新的提供商对象
+                        const updatedProvider = { ...existingProvider };
+                        if (capabilities && capabilities.length > 0) {
+                            (updatedProvider as any).userDefinedCapabilities = capabilities;
+                        } else {
+                            // 删除能力属性（如果没有检测到能力）
+                            delete (updatedProvider as any).userDefinedCapabilities;
+                        }
+                        
+                        existingProviders[providerIndex] = updatedProvider;
+                        updatedCount++;
+                    }
+                } else {
+                    skippedCount++;
+                }
+            } else {
+                // 新模型：创建新的提供商对象
+                const provider = this.createProviderObject(model, capabilities);
+                providers.push(provider);
+                newCount++;
+            }
         }
         
         try {
@@ -528,10 +547,16 @@ export class BulkAddModelsModal extends Modal {
             const messagePoints = [];
             if (newCount > 0) messagePoints.push(`添加了 ${newCount} 个新模型`);
             if (removedCount > 0) messagePoints.push(`移除了 ${removedCount} 个现有模型`);
+            if (updatedCount > 0) messagePoints.push(`更新了 ${updatedCount} 个现有模型`);
             if (skippedCount > 0) messagePoints.push(`${skippedCount} 个模型保持不变`);
             
             const message = messagePoints.join('，');
             new Notice(message || '没有模型变更');
+            
+            // 如果有onSave回调，先调用它
+            if (this.onSave) {
+                await this.onSave(providers);
+            }
             
             this.close();
         } catch (error) {

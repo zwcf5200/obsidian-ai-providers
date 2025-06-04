@@ -50,7 +50,11 @@ export class AIProvidersSettingTab extends PluginSettingTab {
     private openBulkAddModal() {
         new BulkAddModelsModal(
             this.app,
-            this.plugin
+            this.plugin,
+            async (providers: IAIProvider[]) => {
+                // 批量添加完成后，刷新主设置页面
+                this.display();
+            }
         ).open();
     }
 
@@ -496,10 +500,14 @@ export class AIProvidersSettingTab extends PluginSettingTab {
         // 显示加载提示
         new Notice('正在加载模型信息...');
         
-        // 打开批量编辑模态框
+        // 打开批量编辑模态框，添加onSave回调来刷新主页面
         const modal = new BulkAddModelsModal(
             this.app,
-            this.plugin
+            this.plugin,
+            async (providers: IAIProvider[]) => {
+                // 批量保存完成后，刷新主设置页面
+                this.display();
+            }
         );
         
         // 打开模态框
