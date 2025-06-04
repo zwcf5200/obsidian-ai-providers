@@ -123,10 +123,25 @@ export class BulkAddModelsModal extends Modal {
                         this.providerTemplate.url = this.defaultProvidersUrls[value as AIProviderType];
                         this.selectedModels.clear();
                         this.availableModels = [];
+                        
+                        // 如果名称前缀为空，自动设置为供应商类型名称
+                        if (!this.providerTemplate.name || this.providerTemplate.name === '') {
+                            this.providerTemplate.name = this.providerTypeLabels[value as keyof typeof this.providerTypeLabels] || value;
+                        }
+                        
                         this.display();
                     });
                 return dropdown;
             });
+            
+        // 提供商名称前缀
+        new Setting(contentEl)
+            .setName('提供商名称前缀')
+            .setDesc('为所有添加的模型设置统一的名称前缀，如果为空则自动使用供应商类型名称')
+            .addText(text => text
+                .setPlaceholder('例如：本地Ollama、我的OpenAI等')
+                .setValue(this.providerTemplate.name || '')
+                .onChange(value => this.providerTemplate.name = value));
             
         // 提供商URL
         new Setting(contentEl)
@@ -180,7 +195,7 @@ export class BulkAddModelsModal extends Modal {
         
         if (this.isLoadingModels) {
             (refreshButton as HTMLButtonElement).disabled = true;
-            refreshButton.setText('正在加载...');
+            refreshButton.textContent = '正在加载...';
         }
         
         refreshButton.addEventListener('click', async () => {
@@ -236,7 +251,7 @@ export class BulkAddModelsModal extends Modal {
         
         // 显示已选择的模型数量
         const selectedCountEl = modelsListEl.createDiv('bulk-add-selected-count');
-        selectedCountEl.setText(`已选择 ${this.selectedModels.size} 个模型`);
+        selectedCountEl.textContent = `已选择 ${this.selectedModels.size} 个模型`;
         
         // 创建模型列表
         this.createModelItems(modelsListEl, selectedCountEl);
@@ -286,7 +301,7 @@ export class BulkAddModelsModal extends Modal {
             // 为已添加的模型添加标记
             if (isExistingModel) {
                 const nameEl = setting.nameEl.createSpan('bulk-add-existing-indicator');
-                nameEl.setText('[已添加] ');
+                nameEl.textContent = '[已添加] ';
                 nameEl.setAttr('title', '此模型已添加到配置中');
             }
             
@@ -299,7 +314,7 @@ export class BulkAddModelsModal extends Modal {
                             } else {
                                 this.selectedModels.delete(model);
                             }
-                            countElement.setText(`已选择 ${this.selectedModels.size} 个模型`);
+                            countElement.textContent = `已选择 ${this.selectedModels.size} 个模型`;
                         });
                     
                     this.toggleComponents.set(model, toggle);
@@ -320,9 +335,9 @@ export class BulkAddModelsModal extends Modal {
                 return;
             }
             
-            if (!this.providerTemplate.name) {
-                new Notice('请设置提供商名称前缀');
-                return;
+            // 如果提供商名称前缀为空，自动使用供应商类型名称
+            if (!this.providerTemplate.name || this.providerTemplate.name.trim() === '') {
+                this.providerTemplate.name = this.providerTypeLabels[this.providerTemplate.type as keyof typeof this.providerTypeLabels] || this.providerTemplate.type;
             }
             
             await this.saveSelectedModels();
@@ -574,6 +589,11 @@ export class BulkAddModelsModal extends Modal {
             this.providerTemplate.url = this.defaultProvidersUrls['ollama'];
         }
         
+        // 如果名称前缀为空，自动使用供应商类型名称
+        if (!this.providerTemplate.name || this.providerTemplate.name.trim() === '') {
+            this.providerTemplate.name = this.providerTypeLabels[this.providerTemplate.type as keyof typeof this.providerTypeLabels] || this.providerTemplate.type;
+        }
+        
         // 如果是在编辑已有组，预加载该组的模型
         if (this.providerTemplate.url) {
             await this.preloadExistingModels();
@@ -658,10 +678,15 @@ export class BulkAddModelsModal extends Modal {
      * 创建新的提供商对象，确保类型安全
      */
     private createProviderObject(model: string, capabilities?: string[]): IAIProvider {
+        // 确保有提供商名称前缀，如果没有则使用供应商类型名称
+        const namePrefix = this.providerTemplate.name || 
+                          this.providerTypeLabels[this.providerTemplate.type as keyof typeof this.providerTypeLabels] || 
+                          this.providerTemplate.type;
+        
         const newProvider: IAIProvider = {
             id: `id-${Date.now().toString()}-${Math.random().toString(36).substring(2, 11)}`,
-            // 直接使用模型名称作为提供商名称，不再使用前缀
-            name: model,
+            // 使用前缀和模型名称的组合
+            name: `${namePrefix} - ${model}`,
             type: this.providerTemplate.type,
             url: this.providerTemplate.url,
             apiKey: this.providerTemplate.apiKey,

@@ -83,6 +83,25 @@ export class AIProvidersSettingTab extends PluginSettingTab {
     }
     
     async saveProvider(provider: IAIProvider) {
+        // 如果供应商名称为空，自动使用供应商类型名称代替
+        if (!provider.name || provider.name.trim() === '') {
+            const typeLabels: Record<string, string> = {
+                'openai': 'OpenAI',
+                'ollama': 'Ollama',
+                'openrouter': 'OpenRouter',
+                'gemini': 'Google Gemini',
+                'lmstudio': 'LM Studio',
+                'groq': 'Groq',
+                'custom': 'Custom'
+            };
+            provider.name = typeLabels[provider.type as keyof typeof typeLabels] || provider.type;
+            
+            // 如果有模型名称，可以添加模型后缀使名称更具体
+            if (provider.model) {
+                provider.name = `${provider.name} - ${provider.model}`;
+            }
+        }
+        
         if (!this.validateProvider(provider)) return;
 
         const providers = this.plugin.settings.providers || [];
@@ -321,7 +340,7 @@ export class AIProvidersSettingTab extends PluginSettingTab {
         
         // 显示模型计数
         const countSpan = actionBar.createSpan();
-        countSpan.setText(`${providers.length}个模型`);
+        countSpan.textContent = `${providers.length}个模型`;
         countSpan.addClass('ai-providers-group-count');
         
         // 折叠/展开按钮
@@ -336,7 +355,7 @@ export class AIProvidersSettingTab extends PluginSettingTab {
             
             if (!isDefaultUrl) {
                 const urlEl = groupEl.createDiv('ai-providers-group-url');
-                urlEl.setText(url);
+                urlEl.textContent = url;
             }
         }
         
@@ -414,7 +433,7 @@ export class AIProvidersSettingTab extends PluginSettingTab {
                 const pill = capabilitiesEl.createDiv('ai-providers-capability-pill');
                 const iconSpan = pill.createSpan('ai-providers-capability-icon');
                 setIcon(iconSpan, capabilityIcons[cap] || 'check');
-                pill.createSpan('ai-providers-capability-label').setText(capabilityLabels[cap] || cap);
+                pill.createSpan('ai-providers-capability-label').textContent = capabilityLabels[cap] || cap;
             });
             
             setting.descEl.after(capabilitiesEl as any);

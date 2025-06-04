@@ -41,7 +41,7 @@ export class CapabilitiesConfigModal extends Modal {
         // 添加当前能力描述
         this.capabilitiesDesc = contentEl.createEl('div');
         this.capabilitiesDesc.addClass('ai-providers-capabilities');
-        this.capabilitiesDesc.setText(`当前能力: ${this.getCapabilitiesDisplayText()}`);
+        this.capabilitiesDesc.textContent = `当前能力: ${this.getCapabilitiesDisplayText()}`;
 
         // 创建能力选项
         const capabilities: AICapability[] = ['dialogue', 'vision', 'tool_use', 'text_to_image', 'embedding'];
@@ -59,7 +59,7 @@ export class CapabilitiesConfigModal extends Modal {
                             }
                             // 更新能力描述
                             if (this.capabilitiesDesc) {
-                                this.capabilitiesDesc.setText(`当前能力: ${this.getCapabilitiesDisplayText()}`);
+                                this.capabilitiesDesc.textContent = `当前能力: ${this.getCapabilitiesDisplayText()}`;
                             }
                         });
                     // 存储开关控件引用
@@ -88,7 +88,7 @@ export class CapabilitiesConfigModal extends Modal {
                             
                             // 更新当前能力显示
                             if (this.capabilitiesDesc) {
-                                this.capabilitiesDesc.setText(`当前能力: ${this.getCapabilitiesDisplayText()}`);
+                                this.capabilitiesDesc.textContent = `当前能力: ${this.getCapabilitiesDisplayText()}`;
                             }
                             
                             new Notice(`成功探测到 ${detected.length} 项能力`);

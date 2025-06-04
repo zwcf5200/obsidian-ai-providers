@@ -224,7 +224,7 @@ export class ProviderFormModal extends Modal {
         // 添加当前能力显示
         const capabilitiesDesc = capabilitiesSetting.descEl.createEl('div');
         capabilitiesDesc.addClass('ai-providers-capabilities');
-        capabilitiesDesc.setText(`当前能力: ${this.getCapabilitiesDisplayText()}`);
+        capabilitiesDesc.textContent = `当前能力: ${this.getCapabilitiesDisplayText()}`;
 
         capabilitiesSetting.addButton(button => {
             button
@@ -236,7 +236,7 @@ export class ProviderFormModal extends Modal {
                         (capabilities: AICapability[]) => {
                             (this.provider as any).userDefinedCapabilities = capabilities;
                             // 更新显示
-                            capabilitiesDesc.setText(`当前能力: ${this.getCapabilitiesDisplayText()}`);
+                            capabilitiesDesc.textContent = `当前能力: ${this.getCapabilitiesDisplayText()}`;
                             new Notice(`已为 ${this.provider.name} 配置 ${capabilities.length} 项能力`);
                         },
                         this.plugin.aiProviders
