@@ -141,7 +141,7 @@ export class BulkAddModelsModal extends Modal {
         // 提供商名称前缀
         new Setting(contentEl)
             .setName('提供商名称前缀')
-            .setDesc('为所有添加的模型设置统一的名称前缀，如果为空则自动使用供应商类型名称')
+            .setDesc('为所有添加的模型设置统一的名称前缀。提供商名称将只包含此前缀，不包含模型名称，避免与其他插件显示时产生重复。')
             .addText(text => text
                 .setPlaceholder('例如：本地Ollama、我的OpenAI等')
                 .setValue(this.providerTemplate.name || '')
@@ -724,10 +724,21 @@ export class BulkAddModelsModal extends Modal {
                           this.providerTypeLabels[this.providerTemplate.type as keyof typeof this.providerTypeLabels] || 
                           this.providerTemplate.type;
         
+        // 检查现有提供商以确保名称唯一性
+        const existingProviders = this.plugin.settings.providers || [];
+        let finalName = namePrefix;
+        let counter = 1;
+        
+        // 如果名称已存在，添加序号
+        while (existingProviders.some(p => p.name === finalName)) {
+            finalName = `${namePrefix} ${counter}`;
+            counter++;
+        }
+        
         const newProvider: IAIProvider = {
             id: `id-${Date.now().toString()}-${Math.random().toString(36).substring(2, 11)}`,
-            // 使用前缀和模型名称的组合
-            name: `${namePrefix} - ${model}`,
+            // 只使用前缀，不包含模型名称
+            name: finalName,
             type: this.providerTemplate.type,
             url: this.providerTemplate.url,
             apiKey: this.providerTemplate.apiKey,

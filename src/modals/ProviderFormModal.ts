@@ -38,18 +38,20 @@ export class ProviderFormModal extends Modal {
                 text.setValue(this.provider.model || '')
                     .onChange(value => {
                         this.provider.model = value;
-                        if (value) {
-                            const typeLabels: Record<string, string> = {
-                                'openai': 'OpenAI',
-                                'ollama': 'Ollama',
-                                'openrouter': 'OpenRouter',
-                                'gemini': 'Google Gemini',
-                                'lmstudio': 'LM Studio',
-                                'groq': 'Groq',
-                                'custom': 'Custom'
-                            };
-                            this.provider.name = value;
-                        }
+                        // 移除自动设置提供商名称为模型名称的逻辑
+                        // 这会导致与模型名称重复的问题
+                        // if (value) {
+                        //     const typeLabels: Record<string, string> = {
+                        //         'openai': 'OpenAI',
+                        //         'ollama': 'Ollama',
+                        //         'openrouter': 'OpenRouter',
+                        //         'gemini': 'Google Gemini',
+                        //         'lmstudio': 'LM Studio',
+                        //         'groq': 'Groq',
+                        //         'custom': 'Custom'
+                        //     };
+                        //     this.provider.name = value;
+                        // }
                     });
                 text.inputEl.setAttribute('data-testid', 'model-input');
                 return text;
@@ -81,9 +83,11 @@ export class ProviderFormModal extends Modal {
                         this.provider.model = value;
                         dropdown.selectEl.title = value;
                         
-                        if (value && value !== "none" && value !== "loading") {
-                            this.provider.name = value;
-                        }
+                        // 移除自动设置提供商名称为模型名称的逻辑
+                        // 这会导致与模型名称重复的问题
+                        // if (value && value !== "none" && value !== "loading") {
+                        //     this.provider.name = value;
+                        // }
                     });
                 
                 dropdown.selectEl.setAttribute('data-testid', 'model-dropdown');
@@ -198,6 +202,15 @@ export class ProviderFormModal extends Modal {
                 return dropdown;
             });
 
+        // 添加提供商名称输入框
+        new Setting(contentEl)
+            .setName(I18n.t('settings.providerName'))
+            .setDesc(I18n.t('settings.providerNameDesc'))
+            .addText(text => text
+                .setPlaceholder(I18n.t('settings.providerNamePlaceholder'))
+                .setValue(this.provider.name || '')
+                .onChange(value => this.provider.name = value));
+
         new Setting(contentEl)
             .setName(I18n.t('settings.providerUrl'))
             .setDesc(I18n.t('settings.providerUrlDesc'))
@@ -286,7 +299,8 @@ export class ProviderFormModal extends Modal {
             'vision': '视觉',
             'tool_use': '工具使用',
             'text_to_image': '文生图',
-            'embedding': '嵌入向量'
+            'embedding': '嵌入向量',
+            'unknown': '未知'
         };
 
         return capabilities.map(c => capabilityLabels[c]).join(', ');

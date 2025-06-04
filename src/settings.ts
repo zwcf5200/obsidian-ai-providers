@@ -76,13 +76,6 @@ export class AIProvidersSettingTab extends PluginSettingTab {
             }
         }
 
-        // Check for duplicate names
-        const providers = this.plugin.settings.providers || [];
-        const existingProvider = providers.find((p: IAIProvider) => p.name === provider.name && p.id !== provider.id);
-        if (existingProvider) {
-            return false;
-        }
-
         return true;
     }
     
@@ -100,10 +93,8 @@ export class AIProvidersSettingTab extends PluginSettingTab {
             };
             provider.name = typeLabels[provider.type as keyof typeof typeLabels] || provider.type;
             
-            // 如果有模型名称，可以添加模型后缀使名称更具体
-            if (provider.model) {
-                provider.name = `${provider.name} - ${provider.model}`;
-            }
+            // 移除自动添加模型名称后缀的逻辑
+            // 保持名称简洁，避免与使用此SDK的插件产生重复命名
         }
         
         if (!this.validateProvider(provider)) return;

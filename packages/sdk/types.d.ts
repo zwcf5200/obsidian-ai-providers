@@ -43,7 +43,7 @@ export interface ITokenUsage {
     totalTokens?: number;
 }
 
-export type AICapability = 'dialogue' | 'vision' | 'tool_use' | 'text_to_image' | 'embedding';
+export type AICapability = 'dialogue' | 'vision' | 'tool_use' | 'text_to_image' | 'embedding' | 'unknown';
 
 export interface IModelCapabilities {
     modelId: string;

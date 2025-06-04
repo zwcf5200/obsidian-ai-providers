@@ -10,7 +10,8 @@ export class CapabilitiesConfigModal extends Modal {
         'vision': '视觉',
         'tool_use': '工具使用',
         'text_to_image': '文生图',
-        'embedding': '嵌入向量'
+        'embedding': '嵌入向量',
+        'unknown': '未知'
     };
     private toggleControls: Record<string, any> = {};
     private capabilitiesDesc: HTMLElement | null = null;
