@@ -3,6 +3,7 @@ import { IAIProvider, AIProviderType } from '../../packages/sdk/index';
 import { logger } from '../utils/logger';
 import AIProvidersPlugin from '../main';
 import { I18n } from '../i18n';
+import { PROVIDER_TYPE_LABELS, DEFAULT_PROVIDER_URLS, getProviderTypeLabel, getDefaultProviderUrl } from '../constants';
 
 export class BulkAddModelsModal extends Modal {
     private isLoadingModels = false;
@@ -14,15 +15,15 @@ export class BulkAddModelsModal extends Modal {
     private modelCapabilities: Map<string, string[]> = new Map();
     
     // 统一的提供商类型标签定义
-    private readonly providerTypeLabels: Record<string, string> = {
-        'openai': 'OpenAI',
-        'ollama': 'Ollama',
-        'openrouter': 'OpenRouter',
-        'gemini': 'Google Gemini',
-        'lmstudio': 'LM Studio',
-        'groq': 'Groq',
-        'custom': 'Custom'
-    };
+    // private readonly providerTypeLabels: Record<string, string> = {
+    //     'openai': 'OpenAI',
+    //     'ollama': 'Ollama',
+    //     'openrouter': 'OpenRouter',
+    //     'gemini': 'Google Gemini',
+    //     'lmstudio': 'LM Studio',
+    //     'groq': 'Groq',
+    //     'custom': 'Custom'
+    // };
     
     // 统一的能力映射关系
     private readonly capabilityMappings: Record<string, string[]> = {
@@ -52,16 +53,17 @@ export class BulkAddModelsModal extends Modal {
         'embedding': 'box',
         'unknown': 'help-circle'
     };
-    
-    private readonly defaultProvidersUrls = {
-        openai: "https://api.openai.com/v1",
-        ollama: "http://localhost:30100",
-        gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
-        openrouter: "https://openrouter.ai/api/v1",
-        lmstudio: "http://localhost:1234/v1",
-        groq: "https://api.groq.com/openai/v1",
-        custom: "",
-    };
+
+    // 移除重复的defaultProvidersUrls定义，使用导入的常量
+    // private readonly defaultProvidersUrls = {
+    //     openai: "https://api.openai.com/v1",
+    //     ollama: "http://localhost:30100",
+    //     gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
+    //     openrouter: "https://openrouter.ai/api/v1",
+    //     lmstudio: "http://localhost:1234/v1",
+    //     groq: "https://api.groq.com/openai/v1",
+    //     custom: "",
+    // };
 
     constructor(
         app: App,
@@ -75,7 +77,7 @@ export class BulkAddModelsModal extends Modal {
             id: '',
             name: '',
             type: 'ollama',
-            url: this.defaultProvidersUrls['ollama'],
+            url: getDefaultProviderUrl('ollama'),
             apiKey: '',
             model: '',
         };
@@ -87,7 +89,7 @@ export class BulkAddModelsModal extends Modal {
         // 添加标题 - 区分新增和编辑模式
         const isEditingExisting = !!this.providerTemplate.url;
         const titleText = isEditingExisting 
-            ? `批量编辑 ${this.getProviderTypeLabel(this.providerTemplate.type)} 模型` 
+            ? `批量编辑 ${getProviderTypeLabel(this.providerTemplate.type)} 模型` 
             : '批量添加模型';
             
         contentEl.createEl('h2', { text: titleText });
@@ -110,7 +112,7 @@ export class BulkAddModelsModal extends Modal {
      * 获取提供商类型的显示名称
      */
     private getProviderTypeLabel(type: string): string {
-        return this.providerTypeLabels[type as keyof typeof this.providerTypeLabels] || type;
+        return getProviderTypeLabel(type);
     }
     
     private createProviderBasicSettings(contentEl: HTMLElement) {
@@ -120,17 +122,17 @@ export class BulkAddModelsModal extends Modal {
             .setDesc('选择要批量添加模型的提供商类型')
             .addDropdown(dropdown => {
                 dropdown
-                    .addOptions(this.providerTypeLabels)
+                    .addOptions(PROVIDER_TYPE_LABELS)
                     .setValue(this.providerTemplate.type)
                     .onChange(value => {
                         this.providerTemplate.type = value as AIProviderType;
-                        this.providerTemplate.url = this.defaultProvidersUrls[value as AIProviderType];
+                        this.providerTemplate.url = getDefaultProviderUrl(value);
                         this.selectedModels.clear();
                         this.availableModels = [];
                         
                         // 如果名称前缀为空，自动设置为供应商类型名称
                         if (!this.providerTemplate.name || this.providerTemplate.name === '') {
-                            this.providerTemplate.name = this.providerTypeLabels[value as keyof typeof this.providerTypeLabels] || value;
+                            this.providerTemplate.name = getProviderTypeLabel(value);
                         }
                         
                         this.display();
@@ -379,7 +381,7 @@ export class BulkAddModelsModal extends Modal {
             
             // 如果提供商名称前缀为空，自动使用供应商类型名称
             if (!this.providerTemplate.name || this.providerTemplate.name.trim() === '') {
-                this.providerTemplate.name = this.providerTypeLabels[this.providerTemplate.type as keyof typeof this.providerTypeLabels] || this.providerTemplate.type;
+                this.providerTemplate.name = getProviderTypeLabel(this.providerTemplate.type);
             }
             
             await this.saveSelectedModels();
@@ -612,15 +614,15 @@ export class BulkAddModelsModal extends Modal {
         this.providerTemplate = { ...template };
         
         // 确保类型字段是有效的提供商类型
-        if (!this.defaultProvidersUrls[this.providerTemplate.type as keyof typeof this.defaultProvidersUrls]) {
+        if (!DEFAULT_PROVIDER_URLS[this.providerTemplate.type]) {
             // 如果类型无效，设置为默认类型
             this.providerTemplate.type = 'ollama';
-            this.providerTemplate.url = this.defaultProvidersUrls['ollama'];
+            this.providerTemplate.url = getDefaultProviderUrl('ollama');
         }
         
         // 如果名称前缀为空，自动使用供应商类型名称
         if (!this.providerTemplate.name || this.providerTemplate.name.trim() === '') {
-            this.providerTemplate.name = this.providerTypeLabels[this.providerTemplate.type as keyof typeof this.providerTypeLabels] || this.providerTemplate.type;
+            this.providerTemplate.name = getProviderTypeLabel(this.providerTemplate.type);
         }
         
         // 如果是在编辑已有组，预加载该组的模型
@@ -721,7 +723,7 @@ export class BulkAddModelsModal extends Modal {
     private createProviderObject(model: string, capabilities?: string[]): IAIProvider {
         // 确保有提供商名称前缀，如果没有则使用供应商类型名称
         const namePrefix = this.providerTemplate.name || 
-                          this.providerTypeLabels[this.providerTemplate.type as keyof typeof this.providerTypeLabels] || 
+                          getProviderTypeLabel(this.providerTemplate.type) || 
                           this.providerTemplate.type;
         
         // 检查现有提供商以确保名称唯一性

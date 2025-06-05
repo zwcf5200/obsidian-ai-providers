@@ -1,12 +1,12 @@
-import {App, PluginSettingTab, sanitizeHTMLToDom, Setting, setIcon} from 'obsidian';
-import AIProvidersPlugin from './main';
+import { App, PluginSettingTab, Setting, Notice, TFile, sanitizeHTMLToDom, setIcon } from 'obsidian';
+import { IAIProvider, AIProviderType, IAIProvidersPluginSettings } from '../packages/sdk/index';
 import { I18n } from './i18n';
-import { ConfirmationModal } from './modals/ConfirmationModal';
-import { IAIProvider, IAIProvidersPluginSettings, AIProviderType } from '../packages/sdk/index';
 import { logger } from './utils/logger';
+import AIProvidersPlugin from './main';
 import { ProviderFormModal } from './modals/ProviderFormModal';
 import { BulkAddModelsModal } from './modals/BulkAddModelsModal';
-import { Notice } from 'obsidian';
+import { ConfirmationModal } from './modals/ConfirmationModal';
+import { PROVIDER_TYPE_LABELS, DEFAULT_PROVIDER_URLS, getProviderTypeLabel, getDefaultProviderUrl, isDefaultProviderUrl, CAPABILITY_LABELS } from './constants';
 
 
 export const DEFAULT_SETTINGS: IAIProvidersPluginSettings = {
@@ -82,16 +82,7 @@ export class AIProvidersSettingTab extends PluginSettingTab {
     async saveProvider(provider: IAIProvider) {
         // 如果供应商名称为空，自动使用供应商类型名称代替
         if (!provider.name || provider.name.trim() === '') {
-            const typeLabels: Record<string, string> = {
-                'openai': 'OpenAI',
-                'ollama': 'Ollama',
-                'openrouter': 'OpenRouter',
-                'gemini': 'Google Gemini',
-                'lmstudio': 'LM Studio',
-                'groq': 'Groq',
-                'custom': 'Custom'
-            };
-            provider.name = typeLabels[provider.type as keyof typeof typeLabels] || provider.type;
+            provider.name = getProviderTypeLabel(provider.type);
             
             // 移除自动添加模型名称后缀的逻辑
             // 保持名称简洁，避免与使用此SDK的插件产生重复命名
@@ -307,17 +298,7 @@ export class AIProvidersSettingTab extends PluginSettingTab {
         setIcon(iconEl, `ai-providers-${type}`);
         
         // 添加提供商类型名称
-        const typeLabels: Record<string, string> = {
-            'openai': 'OpenAI',
-            'ollama': 'Ollama',
-            'openrouter': 'OpenRouter',
-            'gemini': 'Google Gemini',
-            'lmstudio': 'LM Studio',
-            'groq': 'Groq',
-            'custom': 'Custom'
-        };
-        
-        titleWrap.createEl('h3', { text: typeLabels[type as keyof typeof typeLabels] || type });
+        titleWrap.createEl('h3', { text: getProviderTypeLabel(type) });
         
         // 右侧：操作栏（编辑按钮、模型计数、折叠按钮）
         const actionBar = groupHeader.createDiv('ai-providers-group-actions');
@@ -346,7 +327,7 @@ export class AIProvidersSettingTab extends PluginSettingTab {
         // 在header下方单独显示URL信息（如果有且非默认值）
         if (url) {
             // 检查是否是默认URL
-            const isDefaultUrl = this.isDefaultProviderUrl(type, url);
+            const isDefaultUrl = isDefaultProviderUrl(type, url);
             
             if (!isDefaultUrl) {
                 const urlEl = groupEl.createDiv('ai-providers-group-url');
@@ -381,21 +362,39 @@ export class AIProvidersSettingTab extends PluginSettingTab {
     }
     
     /**
-     * 检查URL是否是提供商的默认URL
+     * 为特定分组打开批量编辑模态框
      */
-    private isDefaultProviderUrl(type: string, url: string): boolean {
-        const defaultUrls: Record<string, string> = {
-            'openai': 'https://api.openai.com/v1',
-            'ollama': 'http://localhost:11434',
-            'gemini': 'https://generativelanguage.googleapis.com/v1beta/openai',
-            'openrouter': 'https://openrouter.ai/api/v1',
-            'lmstudio': 'http://localhost:1234/v1',
-            'groq': 'https://api.groq.com/openai/v1'
+    private async openBulkAddModalForGroup(type: string, url: string, groupProviders: IAIProvider[]) {
+        // 创建临时提供商对象
+        const templateProvider: IAIProvider = {
+            id: '',
+            name: '', // 不再需要名称字段
+            type: type as AIProviderType,
+            url: url,
+            apiKey: groupProviders.length > 0 ? groupProviders[0].apiKey : '',
+            model: ''
         };
         
-        return defaultUrls[type] === url;
+        // 显示加载提示
+        new Notice('正在加载模型信息...');
+        
+        // 打开批量编辑模态框，添加onSave回调来刷新主页面
+        const modal = new BulkAddModelsModal(
+            this.app,
+            this.plugin,
+            async (providers: IAIProvider[]) => {
+                // 批量保存完成后，刷新主设置页面
+                this.display();
+            }
+        );
+        
+        // 打开模态框
+        modal.open();
+        
+        // 设置模板提供商 (异步操作)
+        await modal.setProviderTemplate(templateProvider);
     }
-    
+
     /**
      * 创建单个提供商项目UI
      */
@@ -404,17 +403,9 @@ export class AIProvidersSettingTab extends PluginSettingTab {
             .setName(provider.model || provider.name)
             .setDesc(''); // 不再需要在描述中显示模型名
 
-        // 添加能力指示器
+        // 添加能力指示器（使用导入的能力常量）
         if ((provider as any).userDefinedCapabilities && (provider as any).userDefinedCapabilities.length > 0) {
             const capabilitiesEl = setting.settingEl.createDiv('ai-providers-capabilities-container');
-            
-            const capabilityLabels: Record<string, string> = {
-                'dialogue': '对话',
-                'vision': '视觉',
-                'tool_use': '工具',
-                'text_to_image': '文生图',
-                'embedding': '嵌入'
-            };
             
             const capabilityIcons: Record<string, string> = {
                 'dialogue': 'message-square',
@@ -428,7 +419,7 @@ export class AIProvidersSettingTab extends PluginSettingTab {
                 const pill = capabilitiesEl.createDiv('ai-providers-capability-pill');
                 const iconSpan = pill.createSpan('ai-providers-capability-icon');
                 setIcon(iconSpan, capabilityIcons[cap] || 'check');
-                pill.createSpan('ai-providers-capability-label').textContent = capabilityLabels[cap] || cap;
+                pill.createSpan('ai-providers-capability-label').textContent = CAPABILITY_LABELS[cap as keyof typeof CAPABILITY_LABELS] || cap;
             });
             
             setting.descEl.after(capabilitiesEl as any);
@@ -472,39 +463,5 @@ export class AIProvidersSettingTab extends PluginSettingTab {
 
                 button.extraSettingsEl.setAttribute('data-testid', 'delete-provider');
             });
-    }
-    
-    /**
-     * 为特定分组打开批量编辑模态框
-     */
-    private async openBulkAddModalForGroup(type: string, url: string, groupProviders: IAIProvider[]) {
-        // 创建临时提供商对象
-        const templateProvider: IAIProvider = {
-            id: '',
-            name: '', // 不再需要名称字段
-            type: type as AIProviderType,
-            url: url,
-            apiKey: groupProviders.length > 0 ? groupProviders[0].apiKey : '',
-            model: ''
-        };
-        
-        // 显示加载提示
-        new Notice('正在加载模型信息...');
-        
-        // 打开批量编辑模态框，添加onSave回调来刷新主页面
-        const modal = new BulkAddModelsModal(
-            this.app,
-            this.plugin,
-            async (providers: IAIProvider[]) => {
-                // 批量保存完成后，刷新主设置页面
-                this.display();
-            }
-        );
-        
-        // 打开模态框
-        modal.open();
-        
-        // 设置模板提供商 (异步操作)
-        await modal.setProviderTemplate(templateProvider);
     }
 }

@@ -4,19 +4,11 @@ import { IAIProvider, AIProviderType, AICapability } from '../../packages/sdk/in
 import { logger } from '../utils/logger';
 import AIProvidersPlugin from '../main';
 import { CapabilitiesConfigModal } from './CapabilitiesConfigModal';
+import { PROVIDER_TYPE_LABELS, DEFAULT_PROVIDER_URLS, getProviderTypeLabel, getDefaultProviderUrl, getCapabilitiesDisplayText } from '../constants';
 
 export class ProviderFormModal extends Modal {
     private isLoadingModels = false;
     private isTextMode = false;
-    private readonly defaultProvidersUrls = {
-        openai: "https://api.openai.com/v1",
-        ollama: "http://localhost:11434",
-        gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
-        openrouter: "https://openrouter.ai/api/v1",
-        lmstudio: "http://localhost:1234/v1",
-        groq: "https://api.groq.com/openai/v1",
-        custom: "",
-    };
 
     constructor(
         app: App,
@@ -165,34 +157,17 @@ export class ProviderFormModal extends Modal {
             .setDesc(I18n.t('settings.providerTypeDesc'))
             .addDropdown(dropdown => {
                 dropdown
-                    .addOptions({
-                        "openai": "OpenAI",
-                        "ollama": "Ollama",
-                        "openrouter": "OpenRouter",
-                        "gemini": "Google Gemini",
-                        "lmstudio": "LM Studio",
-                        "groq": "Groq",
-                        "custom": "Custom"
-                    })
+                    .addOptions(PROVIDER_TYPE_LABELS)
                     .setValue(this.provider.type)
                     .onChange(value => {
                         this.provider.type = value as AIProviderType;
-                        this.provider.url = this.defaultProvidersUrls[value as AIProviderType];
+                        this.provider.url = getDefaultProviderUrl(value);
                         this.provider.availableModels = undefined;
                         this.provider.model = undefined;
                         
-                        // 自动设置名称为模型名称（会在选择模型后更新）
-                        const typeLabels: Record<string, string> = {
-                            'openai': 'OpenAI',
-                            'ollama': 'Ollama',
-                            'openrouter': 'OpenRouter',
-                            'gemini': 'Google Gemini',
-                            'lmstudio': 'LM Studio',
-                            'groq': 'Groq',
-                            'custom': 'Custom'
-                        };
+                        // 如果名称为空，自动设置为提供商类型名称
                         if (!this.provider.name || this.provider.name === "") {
-                            this.provider.name = typeLabels[value as keyof typeof typeLabels] || value;
+                            this.provider.name = getProviderTypeLabel(value);
                         }
                         
                         this.display();
@@ -237,7 +212,7 @@ export class ProviderFormModal extends Modal {
         // 添加当前能力显示
         const capabilitiesDesc = capabilitiesSetting.descEl.createEl('div');
         capabilitiesDesc.addClass('ai-providers-capabilities');
-        capabilitiesDesc.textContent = `当前能力: ${this.getCapabilitiesDisplayText()}`;
+        capabilitiesDesc.textContent = `当前能力: ${getCapabilitiesDisplayText((this.provider as any).userDefinedCapabilities || [])}`;
 
         capabilitiesSetting.addButton(button => {
             button
@@ -249,7 +224,7 @@ export class ProviderFormModal extends Modal {
                         (capabilities: AICapability[]) => {
                             (this.provider as any).userDefinedCapabilities = capabilities;
                             // 更新显示
-                            capabilitiesDesc.textContent = `当前能力: ${this.getCapabilitiesDisplayText()}`;
+                            capabilitiesDesc.textContent = `当前能力: ${getCapabilitiesDisplayText(capabilities)}`;
                             new Notice(`已为 ${this.provider.name} 配置 ${capabilities.length} 项能力`);
                         },
                         this.plugin.aiProviders
@@ -286,23 +261,5 @@ export class ProviderFormModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         this.onOpen();
-    }
-
-    private getCapabilitiesDisplayText(): string {
-        const capabilities = (this.provider as any).userDefinedCapabilities as AICapability[] | undefined;
-        if (!capabilities || capabilities.length === 0) {
-            return '未配置';
-        }
-
-        const capabilityLabels: Record<AICapability, string> = {
-            'dialogue': '对话',
-            'vision': '视觉',
-            'tool_use': '工具使用',
-            'text_to_image': '文生图',
-            'embedding': '嵌入向量',
-            'unknown': '未知'
-        };
-
-        return capabilities.map(c => capabilityLabels[c]).join(', ');
     }
 } 

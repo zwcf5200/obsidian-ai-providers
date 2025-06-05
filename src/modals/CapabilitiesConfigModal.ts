@@ -2,17 +2,10 @@ import { App, Modal, Setting, Notice } from 'obsidian';
 import { AICapability, IAIProvider } from '../../packages/sdk/index';
 import { I18n } from '../i18n';
 import { logger } from '../utils/logger';
+import { CAPABILITY_LABELS, USER_SELECTABLE_CAPABILITIES, getCapabilitiesDisplayText } from '../constants';
 
 export class CapabilitiesConfigModal extends Modal {
     private capabilities: Set<AICapability>;
-    private capabilityLabels: Record<AICapability, string> = {
-        'dialogue': '对话',
-        'vision': '视觉',
-        'tool_use': '工具使用',
-        'text_to_image': '文生图',
-        'embedding': '嵌入向量',
-        'unknown': '未知'
-    };
     private toggleControls: Record<string, any> = {};
     private capabilitiesDesc: HTMLElement | null = null;
 
@@ -42,14 +35,12 @@ export class CapabilitiesConfigModal extends Modal {
         // 添加当前能力描述
         this.capabilitiesDesc = contentEl.createEl('div');
         this.capabilitiesDesc.addClass('ai-providers-capabilities');
-        this.capabilitiesDesc.textContent = `当前能力: ${this.getCapabilitiesDisplayText()}`;
+        this.capabilitiesDesc.textContent = `当前能力: ${getCapabilitiesDisplayText(Array.from(this.capabilities))}`;
 
-        // 创建能力选项
-        const capabilities: AICapability[] = ['dialogue', 'vision', 'tool_use', 'text_to_image', 'embedding'];
-        
-        capabilities.forEach(capability => {
+        // 创建能力选项（使用导入的常量）
+        USER_SELECTABLE_CAPABILITIES.forEach(capability => {
             new Setting(contentEl)
-                .setName(this.capabilityLabels[capability])
+                .setName(CAPABILITY_LABELS[capability])
                 .addToggle(toggle => {
                     toggle.setValue(this.capabilities.has(capability))
                         .onChange(value => {
@@ -60,7 +51,7 @@ export class CapabilitiesConfigModal extends Modal {
                             }
                             // 更新能力描述
                             if (this.capabilitiesDesc) {
-                                this.capabilitiesDesc.textContent = `当前能力: ${this.getCapabilitiesDisplayText()}`;
+                                this.capabilitiesDesc.textContent = `当前能力: ${getCapabilitiesDisplayText(Array.from(this.capabilities))}`;
                             }
                         });
                     // 存储开关控件引用
@@ -89,7 +80,7 @@ export class CapabilitiesConfigModal extends Modal {
                             
                             // 更新当前能力显示
                             if (this.capabilitiesDesc) {
-                                this.capabilitiesDesc.textContent = `当前能力: ${this.getCapabilitiesDisplayText()}`;
+                                this.capabilitiesDesc.textContent = `当前能力: ${getCapabilitiesDisplayText(Array.from(this.capabilities))}`;
                             }
                             
                             new Notice(`成功探测到 ${detected.length} 项能力`);
@@ -125,22 +116,10 @@ export class CapabilitiesConfigModal extends Modal {
         contentEl.empty();
     }
 
-    // 添加获取能力显示文本的方法
-    private getCapabilitiesDisplayText(): string {
-        if (this.capabilities.size === 0) {
-            return '未设置任何能力';
-        }
-        return Array.from(this.capabilities)
-            .map(cap => this.capabilityLabels[cap])
-            .join(', ');
-    }
-
     // 添加更新开关状态的方法
     private updateToggleStates(): void {
-        const allCapabilities: AICapability[] = ['dialogue', 'vision', 'tool_use', 'text_to_image', 'embedding'];
-        
-        // 更新每个能力的开关状态
-        allCapabilities.forEach(capability => {
+        // 使用导入的常量替换硬编码列表
+        USER_SELECTABLE_CAPABILITIES.forEach(capability => {
             const toggle = this.toggleControls[capability];
             if (toggle) {
                 toggle.setValue(this.capabilities.has(capability));
