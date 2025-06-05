@@ -403,6 +403,12 @@ export class AIProvidersSettingTab extends PluginSettingTab {
             .setName(provider.model || provider.name)
             .setDesc(''); // 不再需要在描述中显示模型名
 
+        // 为模型名称添加 data-testid 以便测试
+        if (provider.model) {
+            const nameEl = setting.nameEl;
+            nameEl.setAttribute('data-testid', 'model-pill');
+        }
+
         // 添加能力指示器（使用导入的能力常量）
         if ((provider as any).userDefinedCapabilities && (provider as any).userDefinedCapabilities.length > 0) {
             const capabilitiesEl = setting.settingEl.createDiv('ai-providers-capabilities-container');

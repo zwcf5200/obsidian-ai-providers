@@ -216,9 +216,20 @@ describe('AIProvidersSettingTab', () => {
             plugin.settings.providers = [testProvider];
             settingTab.display();
 
-            const providers = containerEl.querySelectorAll('.setting-item');
-            expect(providers.length).toBeGreaterThan(1); // Including header
-            expect(Array.from(providers).some(p => p.textContent?.includes(testProvider.name))).toBe(true);
+            // 在新的分组UI中，提供商会被显示在分组容器中
+            const providerGroups = containerEl.querySelectorAll('.ai-providers-group');
+            expect(providerGroups.length).toBeGreaterThan(0);
+            
+            // 检查是否有提供商项目（设置项）
+            const providers = containerEl.querySelectorAll('.ai-providers-models-container .setting-item');
+            expect(providers.length).toBeGreaterThan(0);
+            
+            // 检查提供商名称是否显示（在新UI中，显示的是model名称或provider名称）
+            const hasProviderName = Array.from(providers).some(p => 
+                p.textContent?.includes(testProvider.name) || 
+                p.textContent?.includes(testProvider.model || '')
+            );
+            expect(hasProviderName).toBe(true);
         });
 
         it('should display model pill when provider has model', () => {
@@ -226,6 +237,7 @@ describe('AIProvidersSettingTab', () => {
             plugin.settings.providers = [providerWithModel];
             settingTab.display();
 
+            // 在新的UI结构中，模型名称显示在setting项的名称中
             const modelPill = containerEl.querySelector('[data-testid="model-pill"]');
             expect(modelPill).toBeTruthy();
             expect(modelPill?.textContent).toBe('gpt-4');
