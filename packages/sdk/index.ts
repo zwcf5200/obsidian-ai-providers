@@ -1,6 +1,26 @@
 import { Plugin, PluginSettingTab, App, sanitizeHTMLToDom } from "obsidian";
 import { ExtendedApp, IAIProvidersService, IUsageMetrics } from './types';
 
+// 实现性能数据错误枚举
+export enum PerformanceMetricsError {
+    CALCULATION_FAILED = 'CALCULATION_FAILED',
+    PROVIDER_NOT_SUPPORTED = 'PROVIDER_NOT_SUPPORTED',
+    DATA_INCOMPLETE = 'DATA_INCOMPLETE',
+    TIMEOUT = 'TIMEOUT'
+}
+
+// 实现性能数据异常类
+export class PerformanceMetricsException extends Error {
+    constructor(
+        public code: PerformanceMetricsError,
+        message: string,
+        public details?: any
+    ) {
+        super(message);
+        this.name = 'PerformanceMetricsException';
+    }
+}
+
 const FALLBACK_TIMEOUT = 100;
 const REQUIRED_AI_PROVIDERS_VERSION = 1;
 const AI_PROVIDERS_READY_EVENT = 'ai-providers-ready';
@@ -200,5 +220,9 @@ export type {
     IUsageMetrics,
     ReportUsageCallback,
     AICapability,
-    IModelCapabilities
+    IModelCapabilities,
+    IPerformanceMetricsCallback,
+    IRequestCallbacks
 } from './types';
+
+// PerformanceMetricsException 已在上面实现并导出

@@ -1,17 +1,12 @@
 import { AIProvidersService } from './AIProvidersService';
-import { TokenUsageManager } from './TokenUsageManager';
 import { App } from 'obsidian';
 import AIProvidersPlugin from './main';
 import { IAIProvider, IUsageMetrics } from '../packages/sdk/index';
-
-// Mock TokenUsageManager
-jest.mock('./TokenUsageManager');
 
 describe('AIProvidersService', () => {
     let service: AIProvidersService;
     let mockApp: Partial<App>;
     let mockPlugin: Partial<AIProvidersPlugin>;
-    let mockTokenUsageManagerInstance: jest.Mocked<TokenUsageManager>;
 
     beforeEach(() => {
         mockApp = {};
@@ -23,53 +18,56 @@ describe('AIProvidersService', () => {
             }
         };
 
-        // 重置并准备 TokenUsageManager mock
-        (TokenUsageManager as jest.Mock).mockClear();
-        mockTokenUsageManagerInstance = {
-            recordLastRequestMetrics: jest.fn(),
-            getLastRequestMetrics: jest.fn(),
-            resetStats: jest.fn()
-        } as unknown as jest.Mocked<TokenUsageManager>;
-        (TokenUsageManager as jest.Mock).mockImplementation(() => mockTokenUsageManagerInstance);
-
         service = new AIProvidersService(mockApp as App, mockPlugin as AIProvidersPlugin);
     });
 
-    describe('getLastRequestMetrics', () => {
-        it('should call TokenUsageManager getLastRequestMetrics', () => {
-            const providerId = 'test-provider';
-            const mockMetrics: IUsageMetrics = {
-                usage: {
-                    promptTokens: 10,
-                    completionTokens: 20,
-                    totalTokens: 30
-                },
-                durationMs: 1000
-            };
-            
-            mockTokenUsageManagerInstance.getLastRequestMetrics.mockReturnValue(mockMetrics);
-            
-            const result = service.getLastRequestMetrics(providerId);
-            
-            expect(mockTokenUsageManagerInstance.getLastRequestMetrics).toHaveBeenCalledWith(providerId);
-            expect(result).toEqual(mockMetrics);
-        });
-        
-        it('should return null for unknown provider', () => {
-            mockTokenUsageManagerInstance.getLastRequestMetrics.mockReturnValue(null);
-            
-            const result = service.getLastRequestMetrics('unknown-provider');
-            
-            expect(result).toBeNull();
-        });
-    });
+
 
     describe('execute', () => {
-        it('should record metrics when executing', async () => {
-            // 这个测试需要更复杂的mock，这里只是简化示例
-            // 实际实现需要模拟 handler 并捕获 reportUsageCallback
-            // 此处只验证 TokenUsageManager 的集成
-            expect(TokenUsageManager).toHaveBeenCalled();
+        it('should be defined', () => {
+            expect(service.execute).toBeDefined();
+        });
+
+        it('should handle non-ollama providers by returning unsupported error in callback', async () => {
+            const mockProvider: IAIProvider = {
+                id: 'test-openai',
+                name: 'Test OpenAI',
+                type: 'openai',
+                apiKey: 'test-key'
+            };
+
+            const mockChunkHandler = {
+                onData: jest.fn(),
+                onEnd: jest.fn(),
+                onError: jest.fn(),
+                abort: jest.fn()
+            };
+
+            // Mock the handler
+            const mockHandler = {
+                execute: jest.fn().mockResolvedValue(mockChunkHandler)
+            };
+            (service as any).handlers.openai = mockHandler;
+
+            let callbackError: Error | undefined;
+            let callbackMetrics: IUsageMetrics | null = null;
+
+            await service.execute({
+                provider: mockProvider,
+                prompt: 'test',
+                onPerformanceData: (metrics, error) => {
+                    callbackMetrics = metrics;
+                    callbackError = error;
+                }
+            });
+
+            // 模拟onEnd被调用
+            const onEndCallback = mockChunkHandler.onEnd.mock.calls[0][0];
+            onEndCallback('test response');
+
+            expect(callbackMetrics).toBeNull();
+            expect(callbackError).toBeDefined();
+            expect(callbackError?.message).toContain('not supported for provider type: openai');
         });
     });
 });

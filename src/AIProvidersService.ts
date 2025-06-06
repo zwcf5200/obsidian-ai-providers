@@ -1,8 +1,7 @@
 import { App, Notice } from 'obsidian';
-import { IAIProvider, IAIProvidersService, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIHandler, AIProviderType, ReportUsageCallback, ITokenUsage, AICapability, IUsageMetrics } from '../packages/sdk/index';
+import { IAIProvider, IAIProvidersService, IAIProvidersExecuteParams, IChunkHandler, IAIProvidersEmbedParams, IAIHandler, AIProviderType, ReportUsageCallback, ITokenUsage, AICapability, IUsageMetrics, IPerformanceMetricsCallback, PerformanceMetricsException, PerformanceMetricsError } from '../packages/sdk/index';
 import { OpenAIHandler } from './handlers/OpenAIHandler';
 import { OllamaHandler } from './handlers/OllamaHandler';
-import { TokenUsageManager } from './TokenUsageManager';
 import { I18n } from './i18n';
 import AIProvidersPlugin from './main';
 import { ConfirmationModal } from './modals/ConfirmationModal';
@@ -14,12 +13,10 @@ export class AIProvidersService implements IAIProvidersService {
     private app: App;
     private plugin: AIProvidersPlugin;
     private handlers: Record<string, IAIHandler>;
-    private tokenUsageManager: TokenUsageManager;
 
     constructor(app: App, plugin: AIProvidersPlugin) {
         this.plugin = plugin;
         this.providers = plugin.settings.providers || [];
-        this.tokenUsageManager = new TokenUsageManager();
         this.app = app;
         this.handlers = {
             openai: new OpenAIHandler(plugin.settings),
@@ -56,21 +53,108 @@ export class AIProvidersService implements IAIProvidersService {
     }
 
     async execute(params: IAIProvidersExecuteParams): Promise<IChunkHandler> {
-        const startTime = Date.now(); // Kept for broader context if needed
+        const startTime = Date.now();
+        const { onPerformanceData, callbacks, provider } = params;
+        const performanceCallback = onPerformanceData || callbacks?.onPerformanceData;
         
+        // 用于存储Ollama的性能数据
+        let ollamaMetrics: IUsageMetrics | null = null;
+
         const reportUsageCallback: ReportUsageCallback = (metrics: IUsageMetrics) => {
-            // 只存储最后一次请求的指标，不进行统计
-            this.tokenUsageManager.recordLastRequestMetrics(params.provider.id, metrics);
+            // 只有Ollama提供者才处理性能数据
+            if (provider.type === 'ollama') {
+                // 增强性能数据，添加额外信息
+                ollamaMetrics = {
+                    ...metrics,
+                    tokensPerSecond: metrics.usage.totalTokens && metrics.durationMs ? 
+                        metrics.usage.totalTokens / (metrics.durationMs / 1000) : undefined,
+                    providerId: provider.id,
+                    modelName: provider.model,
+                };
+                logger.debug('Ollama性能数据已准备:', ollamaMetrics);
+            }
         };
 
         try {
-            return await this.getHandler(params.provider.type).execute(params, reportUsageCallback);
+            const chunkHandler = await this.getHandler(provider.type).execute(params, reportUsageCallback);
+            
+            // 包装原始的 onEnd 处理器来触发性能回调
+            const originalOnEnd = chunkHandler.onEnd;
+            chunkHandler.onEnd = (callback) => {
+                originalOnEnd((fullText) => {
+                    // 先调用用户的回调
+                    callback(fullText);
+                    
+                    // 流式输出终止后，立即处理性能数据回调
+                    this.handlePerformanceDataCallback(
+                        provider,
+                        ollamaMetrics,
+                        startTime,
+                        performanceCallback
+                    );
+                });
+            };
+            
+            return chunkHandler;
         } catch (error) {
+            // 请求失败时也触发性能回调
+            if (performanceCallback) {
+                performanceCallback(null, new PerformanceMetricsException(
+                    PerformanceMetricsError.CALCULATION_FAILED,
+                    `Request failed: ${error.message}`,
+                    { originalError: error }
+                ));
+            }
+            
             const message = error instanceof Error ? error.message : I18n.t('errors.failedToExecuteRequest');
             new Notice(message);
             throw error;
         }
     }
+
+    // 处理性能数据回调 - 实现您的流程逻辑
+    private handlePerformanceDataCallback(
+        provider: IAIProvider,
+        ollamaMetrics: IUsageMetrics | null,
+        startTime: number,
+        callback?: IPerformanceMetricsCallback
+    ): void {
+        if (!callback) return;
+        
+        // 1. 监听ai流式输出是否终止 ✅ (已经在onEnd中处理)
+        // 2. 判断当前请求是否为ollama
+        if (provider.type !== 'ollama') {
+            // 3. 如果不是ollama，则直接返回未知/不支持
+            callback(null, new PerformanceMetricsException(
+                PerformanceMetricsError.PROVIDER_NOT_SUPPORTED,
+                `Performance metrics not supported for provider type: ${provider.type}`,
+                { providerId: provider.id, providerType: provider.type }
+            ));
+            return;
+        }
+        
+        // 4. 如果是ollama，则解析性能数据（已经实现）
+        if (ollamaMetrics) {
+            // 计算最终的性能指标
+            const finalMetrics: IUsageMetrics = {
+                ...ollamaMetrics,
+                // 确保时间数据的准确性
+                durationMs: ollamaMetrics.durationMs || (Date.now() - startTime),
+            };
+            
+            logger.debug('触发Ollama性能数据回调:', finalMetrics);
+            callback(finalMetrics);
+        } else {
+            // Ollama但没有性能数据
+            callback(null, new PerformanceMetricsException(
+                PerformanceMetricsError.DATA_INCOMPLETE,
+                `Ollama performance data not available`,
+                { providerId: provider.id }
+            ));
+        }
+    }
+
+
 
     async migrateProvider(provider: IAIProvider): Promise<IAIProvider | false> {
         const fieldsToCompare = ['type', 'apiKey', 'url', 'model'] as const;
@@ -104,11 +188,6 @@ export class AIProvidersService implements IAIProvidersService {
             new Notice(I18n.t('errors.pluginMustBeUpdatedFormatted'));
             throw new Error(I18n.t('errors.pluginMustBeUpdated'));
         }
-    }
-
-    // 获取最后一次请求指标的方法
-    getLastRequestMetrics(providerId: string): IUsageMetrics | null {
-        return this.tokenUsageManager.getLastRequestMetrics(providerId);
     }
 
     detectCapabilities(params: IAIProvidersExecuteParams, providerType?: AIProviderType): AICapability[] {

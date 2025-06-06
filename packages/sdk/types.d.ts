@@ -31,7 +31,6 @@ export interface IAIProvidersService {
     execute: (params: IAIProvidersExecuteParams) => Promise<IChunkHandler>;
     checkCompatibility: (requiredVersion: number) => void;
     migrateProvider: (provider: IAIProvider) => Promise<IAIProvider | false>;
-    getLastRequestMetrics(providerId: string): IUsageMetrics | null;
     detectCapabilities(params: IAIProvidersExecuteParams, providerType?: AIProviderType): AICapability[];
     getModelCapabilities(provider: IAIProvider): AICapability[];
     detectModelCapabilities(provider: IAIProvider): Promise<AICapability[]>;
@@ -82,6 +81,10 @@ export interface IAIProvidersExecuteParamsBase {
         stop?: string[];
         [key: string]: any;
     };
+    // 新增：回调配置
+    callbacks?: IRequestCallbacks;
+    // 新增：直接的性能数据回调（便捷方式）
+    onPerformanceData?: IPerformanceMetricsCallback;
 }
 
 export type IAIProvidersExecuteParamsWithPrompt = IAIProvidersExecuteParamsBase & {
@@ -111,6 +114,40 @@ export interface IUsageMetrics {
     promptEvalDurationMs?: number;
     evalDurationMs?: number;
     loadDurationMs?: number;
+    tokensPerSecond?: number;
+    providerId?: string;
+    modelName?: string;
+}
+
+// 新增：性能数据回调接口
+export interface IPerformanceMetricsCallback {
+    (metrics: IUsageMetrics | null, error?: Error): void;
+}
+
+// 新增：请求回调配置接口
+export interface IRequestCallbacks {
+    onPerformanceData?: IPerformanceMetricsCallback;
+    onProgress?: (progress: number) => void;
+    onError?: (error: Error) => void;
+}
+
+// 新增：性能数据错误类型
+export declare enum PerformanceMetricsError {
+    CALCULATION_FAILED = 'CALCULATION_FAILED',
+    PROVIDER_NOT_SUPPORTED = 'PROVIDER_NOT_SUPPORTED',
+    DATA_INCOMPLETE = 'DATA_INCOMPLETE',
+    TIMEOUT = 'TIMEOUT'
+}
+
+// 新增：性能数据异常类
+export declare class PerformanceMetricsException extends Error {
+    public code: PerformanceMetricsError;
+    public details?: any;
+    constructor(
+        code: PerformanceMetricsError,
+        message: string,
+        details?: any
+    );
 }
 
 export type ReportUsageCallback = (metrics: IUsageMetrics) => void;
