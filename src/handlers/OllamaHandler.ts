@@ -426,8 +426,8 @@ export class OllamaHandler implements IAIHandler {
                         finalStats: finalOllamaStats,
                         firstTokenLatency: firstTokenTime ? firstTokenTime - requestStartTime : undefined
                     });
-                    handlers.end.forEach(handler => handler(fullText));
 
+                    // 先处理性能数据上报，再触发 onEnd
                     if (reportUsage && finalOllamaStats) {
                         try {
                             const usage: ITokenUsage = {
@@ -461,7 +461,7 @@ export class OllamaHandler implements IAIHandler {
                             
                             // 将完整的指标对象传递给回调
                             reportUsage(metrics);
-                            logger.debug('Reported token usage:', { usage, durationMs });
+                            logger.debug('Reported token usage - this should trigger performance callback immediately:', { usage, durationMs });
                         } catch (statsError) {
                             logger.error('Error processing or reporting Ollama usage stats:', statsError, finalOllamaStats);
                         }
@@ -475,6 +475,9 @@ export class OllamaHandler implements IAIHandler {
                         }); 
                         logger.warn('Ollama final stats not available for usage reporting. Reporting duration only.');
                     }
+
+                    // 在性能数据处理完成后，再触发 onEnd 回调
+                    handlers.end.forEach(handler => handler(fullText));
                 }
             } catch (error) {
                 logger.error('Generation failed:', error);

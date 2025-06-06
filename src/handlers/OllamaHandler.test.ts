@@ -1,5 +1,5 @@
 import { OllamaHandler } from './OllamaHandler';
-import { IAIProvider } from '@obsidian-ai-providers/sdk';
+import { IAIProvider, IAIProvidersExecuteParams, IUsageMetrics } from '../../packages/sdk/index';
 import { createAIHandlerTests, createDefaultVerifyApiCalls, IMockClient } from '../../test-utils/createAIHandlerTests';
 
 jest.mock('ollama');
@@ -337,5 +337,84 @@ describe('Ollama image handling direct tests', () => {
             // Clean up the mock to avoid affecting other tests
             handlerPrototype.execute = originalChat;
         }
+    });
+}); 
+
+describe('OllamaHandler', () => {
+    describe('execute', () => {
+        it('should call reportUsage before onEnd for proper performance callback timing', async () => {
+            const mockProvider: IAIProvider = {
+                id: 'test-ollama',
+                name: 'Test Ollama',
+                type: 'ollama',
+                url: 'http://localhost:11434',
+                model: 'llama2:7b'
+            };
+
+            const handler = new OllamaHandler({
+                _version: 1,
+                debugLogging: false,
+                useNativeFetch: false
+            });
+            const callOrder: string[] = [];
+            let reportedMetrics: IUsageMetrics | null = null;
+
+            const mockParams: IAIProvidersExecuteParams = {
+                provider: mockProvider,
+                prompt: 'Test prompt'
+            };
+
+            // Mock the reportUsage callback to track timing
+            const reportUsage = jest.fn((metrics: IUsageMetrics) => {
+                callOrder.push('reportUsage');
+                reportedMetrics = metrics;
+            });
+
+            // Mock the Ollama client
+            const mockChatResponse = [
+                { message: { content: 'Hello' } },
+                { message: { content: ' world' } },
+                { 
+                    message: { content: '!' },
+                    total_duration: 5000000000, // 5 seconds in nanoseconds
+                    prompt_eval_count: 10,
+                    eval_count: 15,
+                    prompt_eval_duration: 1000000000, // 1 second
+                    eval_duration: 3000000000, // 3 seconds
+                    load_duration: 500000000 // 0.5 seconds
+                }
+            ];
+
+            // Mock the handler's getClient method and Ollama response
+            const mockOllama = {
+                chat: jest.fn().mockResolvedValue(mockChatResponse),
+                list: jest.fn().mockResolvedValue({ models: [] }),
+                show: jest.fn().mockResolvedValue({ 
+                    model_info: { 'num_ctx': 4096 } 
+                })
+            };
+            
+            handler['getClient'] = jest.fn().mockReturnValue(mockOllama);
+
+            const chunkHandler = await handler.execute(mockParams, reportUsage);
+
+            // Set up onEnd callback to track timing
+            chunkHandler.onEnd((fullText) => {
+                callOrder.push('onEnd');
+            });
+
+            // Wait for async operations to complete
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+                         // Verify call order: reportUsage should be called before onEnd
+             expect(callOrder).toEqual(['reportUsage', 'onEnd']);
+             expect(reportUsage).toHaveBeenCalledTimes(1);
+             expect(reportedMetrics).toBeDefined();
+             if (reportedMetrics) {
+                 const metrics = reportedMetrics as IUsageMetrics;
+                 expect(metrics.usage.totalTokens).toBe(25); // 10 + 15
+                 expect(metrics.durationMs).toBe(5000); // 5 seconds
+             }
+        });
     });
 }); 

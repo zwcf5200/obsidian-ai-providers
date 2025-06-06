@@ -57,48 +57,66 @@ export class AIProvidersService implements IAIProvidersService {
         const { onPerformanceData, callbacks, provider } = params;
         const performanceCallback = onPerformanceData || callbacks?.onPerformanceData;
         
-        // 用于存储Ollama的性能数据
-        let ollamaMetrics: IUsageMetrics | null = null;
+        // 标记性能回调是否已经被触发
+        let performanceCallbackTriggered = false;
 
         const reportUsageCallback: ReportUsageCallback = (metrics: IUsageMetrics) => {
             // 只有Ollama提供者才处理性能数据
-            if (provider.type === 'ollama') {
+            if (provider.type === 'ollama' && performanceCallback && !performanceCallbackTriggered) {
+                performanceCallbackTriggered = true;
+                
                 // 增强性能数据，添加额外信息
-                ollamaMetrics = {
+                const enhancedMetrics: IUsageMetrics = {
                     ...metrics,
                     tokensPerSecond: metrics.usage.totalTokens && metrics.durationMs ? 
                         metrics.usage.totalTokens / (metrics.durationMs / 1000) : undefined,
                     providerId: provider.id,
                     modelName: provider.model,
                 };
-                logger.debug('Ollama性能数据已准备:', ollamaMetrics);
+                
+                logger.debug('Ollama性能数据已准备，立即触发回调:', enhancedMetrics);
+                
+                // 立即触发性能数据回调
+                performanceCallback(enhancedMetrics);
             }
         };
 
         try {
             const chunkHandler = await this.getHandler(provider.type).execute(params, reportUsageCallback);
             
-            // 包装原始的 onEnd 处理器来触发性能回调
+            // 包装原始的 onEnd 处理器来处理未支持的提供者
             const originalOnEnd = chunkHandler.onEnd;
             chunkHandler.onEnd = (callback) => {
                 originalOnEnd((fullText) => {
                     // 先调用用户的回调
                     callback(fullText);
                     
-                    // 流式输出终止后，立即处理性能数据回调
-                    this.handlePerformanceDataCallback(
-                        provider,
-                        ollamaMetrics,
-                        startTime,
-                        performanceCallback
-                    );
+                    // 如果不是Ollama或者性能回调已经被触发，处理其他情况
+                    if (performanceCallback && !performanceCallbackTriggered) {
+                        if (provider.type !== 'ollama') {
+                            // 非Ollama提供者返回不支持错误
+                            performanceCallback(null, new PerformanceMetricsException(
+                                PerformanceMetricsError.PROVIDER_NOT_SUPPORTED,
+                                `Performance metrics not supported for provider type: ${provider.type}`,
+                                { providerId: provider.id, providerType: provider.type }
+                            ));
+                        } else {
+                            // Ollama但没有性能数据（可能是错误情况）
+                            performanceCallback(null, new PerformanceMetricsException(
+                                PerformanceMetricsError.DATA_INCOMPLETE,
+                                `Ollama performance data not available`,
+                                { providerId: provider.id }
+                            ));
+                        }
+                        performanceCallbackTriggered = true;
+                    }
                 });
             };
             
             return chunkHandler;
         } catch (error) {
             // 请求失败时也触发性能回调
-            if (performanceCallback) {
+            if (performanceCallback && !performanceCallbackTriggered) {
                 performanceCallback(null, new PerformanceMetricsException(
                     PerformanceMetricsError.CALCULATION_FAILED,
                     `Request failed: ${error.message}`,
@@ -111,50 +129,6 @@ export class AIProvidersService implements IAIProvidersService {
             throw error;
         }
     }
-
-    // 处理性能数据回调 - 实现您的流程逻辑
-    private handlePerformanceDataCallback(
-        provider: IAIProvider,
-        ollamaMetrics: IUsageMetrics | null,
-        startTime: number,
-        callback?: IPerformanceMetricsCallback
-    ): void {
-        if (!callback) return;
-        
-        // 1. 监听ai流式输出是否终止 ✅ (已经在onEnd中处理)
-        // 2. 判断当前请求是否为ollama
-        if (provider.type !== 'ollama') {
-            // 3. 如果不是ollama，则直接返回未知/不支持
-            callback(null, new PerformanceMetricsException(
-                PerformanceMetricsError.PROVIDER_NOT_SUPPORTED,
-                `Performance metrics not supported for provider type: ${provider.type}`,
-                { providerId: provider.id, providerType: provider.type }
-            ));
-            return;
-        }
-        
-        // 4. 如果是ollama，则解析性能数据（已经实现）
-        if (ollamaMetrics) {
-            // 计算最终的性能指标
-            const finalMetrics: IUsageMetrics = {
-                ...ollamaMetrics,
-                // 确保时间数据的准确性
-                durationMs: ollamaMetrics.durationMs || (Date.now() - startTime),
-            };
-            
-            logger.debug('触发Ollama性能数据回调:', finalMetrics);
-            callback(finalMetrics);
-        } else {
-            // Ollama但没有性能数据
-            callback(null, new PerformanceMetricsException(
-                PerformanceMetricsError.DATA_INCOMPLETE,
-                `Ollama performance data not available`,
-                { providerId: provider.id }
-            ));
-        }
-    }
-
-
 
     async migrateProvider(provider: IAIProvider): Promise<IAIProvider | false> {
         const fieldsToCompare = ['type', 'apiKey', 'url', 'model'] as const;
